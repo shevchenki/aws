@@ -23,3 +23,397 @@
     - データを準備およびロード
 - AWS Lake Formation		
     - 安全なデータレイクを数日で構築
+
+# アプリケーション統合
+- AWS Step Functions			
+    - 分散型アプリケーションの調整
+- Amazon EventBridge			
+    - SaaS アプリと AWS のサービス向けサーバーレスイベントバス
+- Amazon MQ			
+    - ActiveMQ 向けマネージド型メッセージブローカー
+- Amazon Simple Notification Service (SNS)			
+    - Pub/Sub のマネージドメッセージトピック
+- Amazon Simple Queue Service (SQS)			
+    - マネージド型メッセージキュー
+- AWS AppSync			
+    - 多くのソースから適切なデータを使用して、大規模にアプリを強化
+# AR と VR
+- Amazon Sumerian			
+    - VR および AR アプリケーションの構築と実行
+# AWS コスト管理
+- AWS Cost Explorer 		
+    - AWS のコストと使用状況を分析
+- AWS Budgets			
+    - カスタムコストと使用予算を設定
+- AWS のコストと使用状況レポート			
+    - 包括的なコストと使用状況の情報にアクセス
+- リザーブドインスタンスレポート			
+    - リザーブドインスタンス (RI) の詳細を把握する
+- Savings Plans			
+    - 柔軟な料金設定でコンピューティング使用コストを最大 72% 節約
+# ブロックチェーン
+- Amazon Managed Blockchain			
+    - スケーラブルなブロックチェーンネットワークを作成および管理
+- Amazon Quantum Ledger Database (QLDB)			
+    - フルマネージド型台帳データベース
+# ビジネスアプリケーション
+- Alexa for Business			
+    - 組織に Alexa の力を
+- Amazon Chime			
+    - フラストレーションフリーの会議、ビデオ電話、チャット
+- Amazon WorkDocs			
+    - 安全なエンタープライズドキュメントのストレージおよび共有
+- Amazon WorkMail			
+    - セキュリティに優れた E メールとカレンダー
+# コンピューティング
+- Amazon EC2			
+    - クラウド内の仮想サーバー
+- Amazon EC2 Auto Scaling			
+    - 需要に合わせてコンピューティング性能をスケール
+- Amazon Elastic Container Registry			
+    - Docker イメージを保存および取得
+- Amazon Elastic Container Service			
+    - Docker コンテナを実行および管理
+- Amazon Elastic Kubernetes Service			
+    - マネージド型の Kubernetes を - AWS で実行
+- Amazon Lightsail			
+    - 仮想プライベートサーバーを起動および管理
+- AWS Batch			
+    - あらゆる規模でバッチジョブを実行
+- AWS Elastic Beanstalk			
+    - ウェブアプリを実行および管理
+- AWS Fargate			
+    - サーバーやクラスターを管理することなくコンテナを実行
+- AWS Lambda			
+    - サーバーに煩わされずにコードを実行
+- AWS Outposts 		
+    - AWS インフラストラクチャをオンプレミスで実行
+- AWS Serverless Application Repository			
+    - サーバーレスアプリケーションを検索、デプロイ、公開する
+- AWS Wavelength			
+    - 5G デバイスのための超低レイテンシーアプリケーションを提供
+- VMware Cloud on AWS			
+    - カスタムハードウェアを使用せずにハイブリッドクラウドを構築
+# カスタマーエンゲージメント
+- Amazon Connect			
+    - クラウドベースのコンタクトセンターサービス
+- Amazon Pinpoint			
+    - チャンネル間でのパーソナライズされたユーザーエンゲージメント
+- Amazon Simple Email Service (SES)			
+    - E メールの送受信
+- Contact Lens for Amazon Connect			
+    - ML 駆動のコンタクトセンター分析
+# データベース
+- Amazon Aurora			
+    - 高性能マネージド型リレーショナルデータベース
+- Amazon DynamoDB			
+    - マネージド型 NoSQL データベース
+- Amazon DocumentDB (MongoDB 互換)			
+    - フルマネージド型ドキュメントデータベース
+- Amazon ElastiCache			
+    - インメモリキャッシングシステム
+- Amazon Managed Apache Cassandra サービス			
+    - マネージド型の Cassandra 対応データベース
+- Amazon Neptune			
+    - フルマネージド型グラフデータベースサービス
+- Amazon Quantum Ledger Database (QLDB)			
+    - フルマネージド型台帳データベース
+- Amazon RDS			
+    - MySQL、PostgreSQL、Oracle、SQL Server、MariaDB 向けのマネージド型リレーショナルデータベースサービス
+- Amazon RDS on VMware			
+    - オンプレミスデータベースの管理を自動化
+- Amazon Redshift			
+    - 高速、シンプル、費用対効果の高いデータウェアハウジングサービス
+- Amazon Timestream			
+    - フルマネージド型の時系列データベース
+- AWS Database Migration Service			
+    - 最小限のダウンタイムでデータベースを移行できるサービス
+# 開発者用ツール
+- Amazon Corretto			
+    - 本番環境に向けて OpenJDK を配信
+- AWS Cloud Development Kit (CDK)			
+    - コードを使用してクラウドインフラストラクチャをモデル化する
+- AWS Cloud9			
+    - Cloud IDE でコードを記述、実行、デバッグ
+- AWS CodeBuild			
+    - コードを構築およびテスト
+- AWS CodeCommit			
+    - プライベート Git リポジトリにコードを保存
+- AWS CodeDeploy			
+    - コードデプロイの自動化
+- AWS CodePipeline			
+    - 継続的デリバリーを使用したソフトウェアのリリース
+- AWS CodeStar 		
+    - AWS アプリケーションを開発およびデプロイ
+- AWS コマンドラインインターフェイス 		
+    - AWS のサービスを管理するための統合ツール
+- AWS Device Farm 		
+    - AWS クラウド内の実際のデバイスを使った Android、iOS、ウェブアプリケーションのテスト
+- AWS ツールと SDK 		
+    - AWS のツールと SDK
+- AWS X-Ray			
+    - アプリケーションの分析とデバッグ
+# エンドユーザーコンピューティング
+- Amazon WorkSpaces			
+    - クラウド内の仮想デスクトップ
+- Amazon AppStream 2.0			
+    - デスクトップアプリケーションを安全にブラウザへストリーミングするサービスです。
+- Amazon WorkLink			
+    - 社内のウェブサイトへのモバイルアクセスを可能にする
+# Game Tech
+- Amazon GameLift			
+    - シンプルで高速な費用対効果の高い専用ゲームサーバーホスティング
+- Amazon Lumberyard 		
+    - AWS や Twitch と統合された完全なソースを利用できる、無料のクロスプラットフォーム 3D ゲームエンジン
+# IoT
+- AWS IoT Core			
+    - デバイスをクラウドに接続
+- Amazon FreeRTOS			
+    - マイクロコントローラー向け IoT オペレーティングシステム
+- AWS Greengrass			
+    - デバイスのローカルでのコンピューティング、メッセージング、同期
+- AWS IoT 1-Click 		
+    - AWS Lambda トリガーのワンクリック作成
+- AWS IoT Analytics			
+    - IoT デバイスの分析
+- AWS IoT ボタン			
+    - クラウドのプログラミング可能なダッシュボタン
+- AWS IoT Device Defender			
+    - IoT デバイスのセキュリティ管理
+- AWS IoT Device Management			
+    - IoT デバイスのオンボード、編成、リモート管理
+- AWS IoT Events			
+    - IoT イベントを検出し、対応
+- AWS IoT SiteWise			
+    - IoT データコレクターおよびインタプリタ
+- AWS IoT Things Graph			
+    - デバイスおよびウェブサービスを簡単に接続
+- AWS Partner Device Catalog 		
+    - AWS 互換の IoT ハードウェアの精選カタログ
+# 機械学習
+- Amazon SageMaker				
+    - 機械学習モデルを大規模に構築、トレーニング、デプロイ
+- Amazon Augmented AI				
+    - ML 予測のヒューマンレビューを簡単に導入
+- Amazon CodeGuru (プレビュー)				
+    - コードレビューを自動化して負荷の大きいコード行を特定
+- Amazon Comprehend				
+    - テキスト内でインサイトや関係性を検出
+- Amazon Elastic Inference				
+    - 深層学習の推論を高速化
+- Amazon Forecast				
+    - 機械学習を使用して予測の精度を向上させる
+- Amazon Fraud Detector				
+    - オンライン詐欺をより素早く検知
+- Amazon Kendra				
+    - ML を利用してエンタープライズ検索を改革
+- Amazon Lex				
+    - 音声やテキストに対応するチャットボットを構築
+- Amazon Personalize				
+    - アプリケーションにリアルタイムの推奨を構築する
+- Amazon Polly				
+    - テキストを生きた話し声に変換
+- Amazon Rekognition				
+    - 画像と動画を分析
+- Amazon SageMaker 			
+    - Ground Truth	精度の高い機械学習トレーニングデータセットの構築
+- Amazon Textract				
+    - ドキュメントからテキストやデータを抽出する
+- Amazon Translate				
+    - 自然で流ちょうな言語翻訳
+- Amazon Transcribe				
+    - 自動音声認識
+- AWS 深層学習 AMI				
+    - Amazon EC2 での深層学習
+- AWS Deep Learning Containers				
+    - 深層学習向け Docker イメージ
+- AWS DeepComposer				
+    - ML が有効化されたミュージカルキーボード
+- AWS DeepLens				
+    - 深層学習に対応したビデオカメラ
+- AWS DeepRacer				
+    - 機械学習による 18 分の 1 のスケールでの自律走行型レースカー
+- AWS Inferentia				
+    - 機械学習推論チップ
+- AWS での Apache MXNet				
+    - スケーラブルなオープンソースの深層学習フレームワーク
+- AWS での TensorFlow				
+    - オープンソースのマシンインテリジェンスライブラリ
+# マネジメントとガバナンス
+- Amazon CloudWatch				
+    - リソースとアプリケーションのモニタリング
+- AWS Auto Scaling				
+    - 需要に合わせて複数のリソースをスケール
+- AWS Chatbot			
+    - ChatOps for AWS
+- AWS CloudFormation			
+    - テンプレートを使用してリソースを作成および管理
+- AWS CloudTrail			
+    - ユーザーアクティビティと API 使用状況の追跡
+- AWS コマンドラインインターフェイス 			
+    - AWS サービスを管理するための統合ツール
+- AWS Compute Optimizer			
+    - 最適なAWS コンピューティングリソースを特定
+- AWS Config			
+    - リソースのインベントリと変更の追跡
+- AWS Control Tower			
+    - 安全かつ基準に準拠した複数のアカウント環境をセットアップおよび管理する
+- AWS コンソールモバイルアプリケーション			
+    - リソースの状態を外出先で確認
+- AWS License Manager			
+    - ライセンスの追跡、管理、制御
+- AWS マネジメントコンソール			
+    - ウェブベースのユーザーインターフェイス
+- AWS Managed Services 			
+    - AWS のインフラストラクチャ運用管理
+- AWS OpsWorks			
+    - Chef や Puppet を使った運用の自動化
+- AWS Organizations 			
+    - AWS アカウント全体の一元管理
+- AWS Personal Health Dashboard 			
+    - AWS のサービス状態のパーソナライズされた表示
+- AWS Service Catalog			
+    - 標準化された製品を作成および使用
+- AWS Systems Manager			
+    - 運用時の洞察を改善および実行
+- AWS Trusted Advisor			
+    - パフォーマンスとセキュリティを最適化
+- AWS Well-Architected Tool			
+    - ワークロードの見直しと改善
+# メディアサービス
+- Amazon Elastic Transcoder			
+    - 使いやすいスケーラブルなメディア変換サービス
+- Amazon Kinesis Video Streams			
+    - ビデオストリームを処理および分析
+- AWS Elemental MediaConnect			
+    - 高信頼性、高安全性のライブ動画転送
+- AWS Elemental MediaConvert			
+    - ファイルベースの動画コンテンツを変換
+- AWS Elemental MediaLive			
+    - ライブビデオコンテンツを変換
+- AWS Elemental MediaPackage			
+    - 動画を発信およびパッケージ化
+- AWS Elemental MediaStore			
+    - メディアストレージとシンプルな HTTP オリジン
+- AWS Elemental MediaTailor			
+    - 動画のパーソナライズと収益化
+- AWS Elemental アプライアンスとソフトウェア			
+    - オンプレミスメディアソリューション
+# 移行と転送
+- AWS Migration Hub			
+    - 複数の移行の追跡を 1 か所から実行
+- AWS Application Discovery Service			
+    - オンプレミスのアプリケーションを検出して合理的に移行
+- AWS Database Migration Service			
+    - 最小限のダウンタイムでデータベースを移行できるサービス
+- AWS DataSync			
+    - シンプルかつ高速なオンラインデータ転送
+- AWS Server Migration Service			
+    - オンプレミスサーバーを - AWS に移行
+- AWS Snow ファミリー 			
+    - AWS との間でデータを移行するための物理的デバイス
+- AWS Transfer for SFTP			
+    - フルマネージド型 SFTP サービス
+- CloudEndure 移行 			
+    - AWS クラウドへの大規模な移行を自動化
+# モバイル
+- AWS Amplify			
+    - モバイルアプリケーションとウェブアプリケーションの構築とデプロイ
+- Amazon API Gateway			
+    - API の構築、デプロイ、管理
+- Amazon Pinpoint			
+    - チャンネル間でのパーソナライズされたユーザーエンゲージメント
+- AWS AppSync			
+    - 多くのソースから適切なデータを使用して、大規模にアプリを強化
+- AWS Device Farm 			
+    - AWS クラウド内の実際のデバイスを使った Android、iOS、ウェブアプリケーションのテスト
+# ネットワークとコンテンツ配信
+- Amazon VPC			
+    - 独立したクラウドリソース
+- Amazon API Gateway			
+    - API の構築、デプロイ、管理
+- Amazon CloudFront			
+    - グローバルなコンテンツ配信ネットワーク
+- Amazon Route 53			
+    - スケーラブルなドメインネームシステム (DNS)
+- AWS PrivateLink 			
+    - AWS でホストされているサービスに安全にアクセス
+- AWS App Mesh			
+    - マイクロサービスをモニタリングおよびコントロール
+- AWS Cloud Map			
+    - クラウドリソースのサービス検出
+- AWS Direct Connect 			
+    - AWS への専用ネットワーク接続
+- AWS Global Accelerator			
+    - アプリケーションの可用性とパフォーマンスを向上
+- AWS Transit Gateway			
+    - VPC およびアカウント接続を簡単にスケール
+- Elastic Load Balancing (ELB)			
+    - 複数のターゲットにわたる着信トラフィックの分配
+# 量子テクノロジー
+- Amazon Braket			
+    - 量子コンピューティングを探索して実験
+# ロボット工学
+- AWS RoboMaker			
+    - ロボット工学アプリケーションの開発、テスト、デプロイ
+# 人工衛星
+- AWS Ground Station			
+    - サービスとしてのフルマネージド型地上局
+# セキュリティ、アイデンティティ、コンプライアンス
+- AWS Identity and Access Management (IAM)			
+    - ユーザーアクセスと暗号化キーを管理
+- Amazon Cognito			
+    - アプリの ID 管理
+- Amazon Detective			
+    - 潜在的なセキュリティ問題を調査
+- Amazon GuardDuty			
+    - マネージド型脅威検出サービス
+- Amazon Inspector			
+    - アプリケーションのセキュリティの分析
+- Amazon Macie			
+    - データの検出、分類、保護
+- AWS Artifact 			
+    - AWS のコンプライアンスレポートへのオンデマンドアクセス
+- AWS Certificate Manager			
+    - SSL/TLS 証明書のプロビジョン、管理、およびデプロイ
+- AWS CloudHSM			
+    - コンプライアンスのためのハードウェアベースキーストレージ
+- AWS Directory Service			
+    - Active Directory をホスティングおよび管理
+- AWS Firewall Manager			
+    - ファイアウォールルールの一元管理
+- AWS Key Management Service			
+    - マネージド型の暗号化キーの作成と管理
+- AWS Resource Access Manager 			
+    - AWS のリソースを共有するためのシンプルで安全なサービス
+- AWS Secrets Manager			
+    - 機密情報のローテーション、管理、取得
+- AWS Security Hub			
+    - 統合された - AWS セキュリティ & コンプライアンスセンター
+- AWS Shield			
+    - DDoS 保護
+- AWS Single Sign-On			
+    - クラウドシングルサインオン (SSO) サービス
+- AWS WAF			
+    - 悪意のあるウェブトラフィックのフィルタリング
+# ストレージ
+- Amazon Simple Storage Service (S3)			
+    - クラウド内のスケーラブルなストレージ
+- Amazon Elastic Block Store (EBS)			
+    - EC2 ブロックストレージボリューム
+- Amazon Elastic File System (EFS)			
+    - EC2 用フルマネージド型ファイルシステム
+- Amazon FSx for Lustre			
+    - S3 と統合されたハイパフォーマンスファイルシステム
+- Amazon FSx for Windows File Server			
+    - フルマネージド型 Windows ネイティブのファイルシステム
+- Amazon S3 Glacier			
+    - クラウド内の低コストなアーカイブ向けストレージ
+- AWS Backup 			
+    - AWS のサービス全体にわたる一元管理型バックアップ
+- AWS Snow ファミリー 			
+    - AWS との間でデータを移行するための物理的デバイス
+- AWS Storage Gateway			
+    - ハイブリッドストレージの統合
+- CloudEndure の災害対策			
+    - 高度に自動化した災害対策
