@@ -1,0 +1,25 @@
+# 分析
+- Amazon Athena	
+    - SQL を使用して S3 でデータをクエリ
+- Amazon CloudSearch		
+    - マネージド型検索サービス
+- Amazon Elasticsearch Service		
+    - Elasticsearch クラスターを実行およびスケール
+- Amazon EMR		
+    - ホストされた Hadoop フレームワーク
+- Amazon Kinesis		
+    - リアルタイムのビデオとデータストリームを分析
+- Amazon Managed Streaming for Apache Kafka		
+    - フルマネージド型 Apache Kafka サービス
+- Amazon Redshift		
+    - 高速、シンプル、費用対効果の高いデータウェアハウジングサービス
+- Amazon QuickSight		
+    - 高速ビジネス分析サービス
+- AWS Data Exchange		
+    - クラウド内サードパーティのデータを検索、購読、および使用
+- AWS Data Pipeline		
+    - 定期的なデータ駆動型ワークフローに対するオーケストレーションサービス
+- AWS Glue		
+    - データを準備およびロード
+- AWS Lake Formation		
+    - 安全なデータレイクを数日で構築
