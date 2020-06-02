@@ -283,3 +283,27 @@ Compliance Frameworks:
 
 ![](./images/Batch-key-word.png)
 ![](./images/Batch.png)
+
+# AWS snowball
+
+![](./images/2020-06-01-12-26-11.png)
+![](./images/2020-06-01-12-21-57.png)
+
+- SnowMoblie
+    - You can transfer up to 100PB per Snowmobile
+    - The Snowmobile is designed to transfer data at a rate up to 1 Tb/s
+    - which means you could fill a 100PB Snowmobile in less than 10 days.
+
+# DynamoDB
+## Capacity:
+- Read: for an item up to 4 KB in size.
+    - Strongly consistent read request: 1 
+    - Eventually consistent read requests: 2 
+    - Transactional read requests: 2
+
+- Write: 1 KB in size
+    - Write request unit: 1
+    - Transactional write requests: 2
+
+## Amazon DynamoDB Accelerator (DAX):
+- Is a fully managed, highly available, in-memory **cache** for DynamoDB that delivers up to a 10x performance improvement – from milliseconds to microseconds – even at millions of requests per second.
