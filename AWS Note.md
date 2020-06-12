@@ -214,7 +214,7 @@ Compliance Frameworks:
 - Cho phép quản lý cấu hình cho Application hoặc Operating Systems 
 - Cho phép tự động hoá cấu hình server sử dụng Code 
 - Lifecycle event available in OpsWorks
-![](2020-06-02-23-11-01.png)
+![](./images/OpsWorks.png)
 
 # Microsoft Active Directory
 - Simple AD: không kết nối on-premises AD to AWS.
@@ -311,4 +311,10 @@ Compliance Frameworks:
 - Is a fully managed, highly available, in-memory **cache** for DynamoDB that delivers up to a 10x performance improvement – from milliseconds to microseconds – even at millions of requests per second.
 
 ## Network LoadBalancer
-![](2020-06-02-21-59-19.png)
+![](./images/NLB.png)
+
+## Direct Connect
+- Sử dụng LAG (link aggregation group) để tổng hợp nhiều direct connection để tăng bandwidth
+- Điều kiện gắn direct connect vào LAG
+    - các direct connect phải cùng bandwidth
+    - tối đa 4 bandwidth cho một LAG
