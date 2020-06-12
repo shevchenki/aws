@@ -213,6 +213,8 @@ Compliance Frameworks:
     deploy applications to those resources, and monitor their health.
 - Cho phép quản lý cấu hình cho Application hoặc Operating Systems 
 - Cho phép tự động hoá cấu hình server sử dụng Code 
+- Lifecycle event available in OpsWorks
+![](2020-06-02-23-11-01.png)
 
 # Microsoft Active Directory
 - Simple AD: không kết nối on-premises AD to AWS.
@@ -307,3 +309,6 @@ Compliance Frameworks:
 
 ## Amazon DynamoDB Accelerator (DAX):
 - Is a fully managed, highly available, in-memory **cache** for DynamoDB that delivers up to a 10x performance improvement – from milliseconds to microseconds – even at millions of requests per second.
+
+## Network LoadBalancer
+![](2020-06-02-21-59-19.png)
