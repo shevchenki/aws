@@ -208,6 +208,7 @@ Compliance Frameworks:
 - CodePipeline có support OpsWorks giống như một deployment target
 
 # AWS OpsWorks
+![](./images/OpsWorks-architect.png)
 - AWS OpsWorks là một dịch vụ cho phép tự động hoá server configuration sử dụng Puppet hoặc Chef
 - With AWS OpsWorks, you can provision AWS resources, manage their configuration, 
     deploy applications to those resources, and monitor their health.
@@ -265,9 +266,14 @@ Compliance Frameworks:
 - Test by ??
 - Manuarl Approval ? tạo ở đâu
 
-# Redis Cache
-- Có thể modify để upgraded size chứ không downgraded
-
+# Mem-Cache & Redis-Cache
+![](./images/Memcache-Redis.png)
+- Redis Cache
+    - Có thể modify để upgraded size chứ không downgraded
+    - Có thể setup append only để tránh mất dữ liệu, tối ưu lưu cache
+- Mem Cache:
+    - Xử lý đa luồng
+    - Cache đơn giản
 # Amazon RDS on VMware
 - Hiện chỉ support trên US East (Northern Virginia) Region.
 - Cài trên on-premise VM
@@ -318,3 +324,15 @@ Compliance Frameworks:
 - Điều kiện gắn direct connect vào LAG
     - các direct connect phải cùng bandwidth
     - tối đa 4 bandwidth cho một LAG
+
+## Direct Connect Gateway
+- Sử dụng 1 Direct Connect để cnt vào nhiều VPC
+- Mỗi VPC thành lập một VPG cnt vào Direct Connect GW
+- Direct Connect GW sẽ cnt với Direct Connect thông qua PIRVATE VIRTUAL INTERFACE
+![](./images/Direct-Connect-GW.png)
+
+## EC2 cấp quyền cho người sử dụng S3 - sử dụng trong metadata
+![](./images/ec2-metadata.png)
+
+## Migration
+![](./images/migration.png)
