@@ -234,7 +234,7 @@ Compliance Frameworks:
 - Thực hiện qua pipeline trong AET và đặt Job trong AET
 - Input và Output sẽ chọn 2 bucket khác nhau của S3
     
-# AWS Worldocs
+# AWS Workdocs
 - Cung cấp tất cả các resource cần thiết để tạo enterprise-level file sharing solution. 
 - Có thể tích hợp với Enterprise Directory Service
 
