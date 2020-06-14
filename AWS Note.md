@@ -336,3 +336,6 @@ Compliance Frameworks:
 
 ## Migration
 ![](./images/migration.png)
+
+## Deploy method
+![](./images/Deploy-method.png)
