@@ -263,8 +263,8 @@ Compliance Frameworks:
 - Test by ??
 - Manuarl Approval ? tạo ở đâu
 
-# Redis Cache
-- Có thể modify để upgraded size chứ không downgraded
+# Comparing Redis and Memcached
+![](./images/2020-06-02-10-02-06.png)
 
 # Amazon RDS on VMware
 - Hiện chỉ support trên US East (Northern Virginia) Region.
@@ -307,3 +307,7 @@ Compliance Frameworks:
 
 ## Amazon DynamoDB Accelerator (DAX):
 - Is a fully managed, highly available, in-memory **cache** for DynamoDB that delivers up to a 10x performance improvement – from milliseconds to microseconds – even at millions of requests per second.
+
+# VPN connection between CGW and VGW
+- Chỉ tạo được 1 VGW cho 1 VPC
+- Để tạo dual-tunnel VPN connection sẽ tạo 2 CGW và cnt đến VGW
