@@ -208,11 +208,14 @@ Compliance Frameworks:
 - CodePipeline có support OpsWorks giống như một deployment target
 
 # AWS OpsWorks
+![](./images/OpsWorks-architect.png)
 - AWS OpsWorks là một dịch vụ cho phép tự động hoá server configuration sử dụng Puppet hoặc Chef
 - With AWS OpsWorks, you can provision AWS resources, manage their configuration, 
     deploy applications to those resources, and monitor their health.
 - Cho phép quản lý cấu hình cho Application hoặc Operating Systems 
 - Cho phép tự động hoá cấu hình server sử dụng Code 
+- Lifecycle event available in OpsWorks
+![](./images/OpsWorks.png)
 
 # Microsoft Active Directory
 - Simple AD: không kết nối on-premises AD to AWS.
@@ -231,7 +234,7 @@ Compliance Frameworks:
 - Thực hiện qua pipeline trong AET và đặt Job trong AET
 - Input và Output sẽ chọn 2 bucket khác nhau của S3
     
-# AWS Worldocs
+# AWS Workdocs
 - Cung cấp tất cả các resource cần thiết để tạo enterprise-level file sharing solution. 
 - Có thể tích hợp với Enterprise Directory Service
 
@@ -263,8 +266,14 @@ Compliance Frameworks:
 - Test by ??
 - Manuarl Approval ? tạo ở đâu
 
-# Comparing Redis and Memcached
-![](./images/2020-06-02-10-02-06.png)
+# Mem-Cache & Redis-Cache
+![](./images/Memcache-Redis.png)
+- Redis Cache
+    - Có thể modify để upgraded size chứ không downgraded
+    - Có thể setup append only để tránh mất dữ liệu, tối ưu lưu cache
+- Mem Cache:
+    - Xử lý đa luồng
+    - Cache đơn giản
 
 # Amazon RDS on VMware
 - Hiện chỉ support trên US East (Northern Virginia) Region.
@@ -308,6 +317,30 @@ Compliance Frameworks:
 ## Amazon DynamoDB Accelerator (DAX):
 - Is a fully managed, highly available, in-memory **cache** for DynamoDB that delivers up to a 10x performance improvement – from milliseconds to microseconds – even at millions of requests per second.
 
-# VPN connection between CGW and VGW
+## Network LoadBalancer
+![](./images/NLB.png)
+
+## Direct Connect
+- Sử dụng LAG (link aggregation group) để tổng hợp nhiều direct connection để tăng bandwidth
+- Điều kiện gắn direct connect vào LAG
+    - các direct connect phải cùng bandwidth
+    - tối đa 4 bandwidth cho một LAG
+
+## Direct Connect Gateway
+- Sử dụng 1 Direct Connect để cnt vào nhiều VPC
+- Mỗi VPC thành lập một VPG cnt vào Direct Connect GW
+- Direct Connect GW sẽ cnt với Direct Connect thông qua PIRVATE VIRTUAL INTERFACE
+![](./images/Direct-Connect-GW.png)
+
+## VPN connection between CGW and VGW
 - Chỉ tạo được 1 VGW cho 1 VPC
 - Để tạo dual-tunnel VPN connection sẽ tạo 2 CGW và cnt đến VGW
+
+## EC2 cấp quyền cho người sử dụng S3 - sử dụng trong metadata
+![](./images/ec2-metadata.png)
+
+## Migration
+![](./images/migration.png)
+
+## Deploy method
+![](./images/Deploy-method.png)
