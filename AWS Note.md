@@ -146,6 +146,12 @@ Compliance Frameworks:
 - Sẽ caches responses đối với GET, HEADER và một phần của OPTIONS request. 
 - Các phương thức khác như POST, PUT, PATCH, DELETE sẽ không lưu lại cache
 
+## Cloudfront Option
+![](./images/cloudfront-option.PNG)
+
+## CloudFront Https
+![](./images/cloudfront-https.PNG)
+
 # RDP Remode Desktop Protocol
 * The basic steps for configuring RD Gateway are:
     - Create a Windows EC2 instance and configure a security group rule to allow RDP access.
@@ -225,6 +231,9 @@ Compliance Frameworks:
 
 # AWS Redshift
 - Redshift Workload Management: Có thể tạo thêm Workload Management Group và assign vào Redshift để xử lý thêm các câu query khác
+
+## Redshift Snapshot with KMS
+![](./images/Redshift-snapshot-with-KMS.PNG)
 
 # Elastic Network Interface
 - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html
