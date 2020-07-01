@@ -1,0 +1,59 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Bastion Host for EKS'
+
+Parameters:
+
+  PublicSubnet:
+    Type: String
+    Default: 10.0.0.0/24
+    Description: CidrBlock for public subnet 01 within the VPC
+
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Default: eks_key
+    Type: AWS::EC2::KeyPair::KeyName
+  
+  BastionAmi:
+    Type: String
+    Default: ami-0a1c2ec61571737db
+
+  InstanceType:
+    Type: String
+    Default: t2.micro
+
+  BastionSecurityGroup:
+    Type: String
+
+  BastionDeploy: 
+    Description: Bastion Deploy specify.
+    Default: false
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    ConstraintDescription: must specify true or false.
+
+Conditions:
+  CreateBastion: !Equals [ !Ref BastionDeploy, true ]
+
+Resources:
+  BastionHost:
+    Condition: CreateBastion
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: 
+        Ref: BastionAmi
+      KeyName:
+        Ref: "KeyName"
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet:
+            - Ref: BastionSecurityGroup
+          SubnetId: 
+            Ref: PublicSubnet
+      Tags:
+        - Key: Name
+          Value: eks-bastion-host

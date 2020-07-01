@@ -1,0 +1,618 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Amazon EKS Sample VPC - Private and Public subnets'
+
+Parameters:
+
+  VpcBlock:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: The CIDR range for the VPC. This should be a valid private (RFC 1918) CIDR range.
+
+  PublicSubnet01Block:
+    Type: String
+    Default: 10.0.0.0/24
+    Description: CidrBlock for public subnet 01 within the VPC
+
+  PublicSubnet02Block:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CidrBlock for public subnet 02 within the VPC
+
+  PrivateSubnet01Block:
+    Type: String
+    Default: 10.0.10.0/24
+    Description: CidrBlock for private subnet 01 within the VPC
+
+  PrivateSubnet02Block:
+    Type: String
+    Default: 10.0.11.0/24
+    Description: CidrBlock for private subnet 02 within the VPC
+  
+  EKSClusterName:
+    Description: EKS Cluster Name
+    Default: eks-cluster
+    Type: String
+  
+  EKSVersion:
+    Default: 1.16
+    Type: String
+
+  EKSNodeGroupName:
+    Description: Unique identifier for the Node Group.
+    Default: node-groups
+    Type: String
+
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Default: eks_key
+    Type: AWS::EC2::KeyPair::KeyName
+  
+  AmiType:
+    Description: AL2_x86_64 | AL2_x86_64_GPU
+    Type: String
+    Default: AL2_x86_64
+
+  NodeInstanceType:
+    Type: String
+    Default: t2.small
+
+  NodeGroupMinSize:
+    Type: Number
+    Description: Minimum size of Node Group.
+    Default: 1
+
+  NodeGroupDesiredSize:
+    Type: Number
+    Description: Desired size of Node Group.
+    Default: 2
+
+  NodeGroupMaxSize:
+    Type: Number
+    Description: Maximum size of Node Group.
+    Default: 3
+
+  NodeVolumeSize:
+    Type: Number
+    Description: Node volume size
+    Default: 20
+  
+  DBName:
+    Type: String
+    Default: postgres
+  
+  DBInstanceClass:
+    Type: String
+    Default: db.t2.micro
+
+  Engine:
+    Type: String
+    Default: postgres
+
+  EngineVersion:
+    Type: String
+    Default: 11.6
+
+  MasterUsername:
+    Type: String
+    Default: postgres
+
+  MasterUserPassword:
+    Type: String
+    Default: postgres
+
+  DBSubnetBlock01:
+    Type: String
+    Default: 10.0.20.0/28
+    Description: CidrBlock for DB Subnet 01
+
+  DBSubnetBlock02:
+    Type: String
+    Default: 10.0.21.0/28
+    Description: CidrBlock for DB Subnet 02
+
+  RootDomainName:
+    Type: String
+    Default: frontend-pipeline-demo
+    Description: Static host name
+
+  EKSDeploy: 
+    Description: EKS Deploy specify.
+    Default: false
+    Type: String
+    AllowedValues: 
+      - true
+      - false
+    ConstraintDescription: must specify true or false.
+
+  CDNDeploy: 
+    Description: CDN Deploy specify.
+    Default: true
+    Type: String
+    AllowedValues: 
+      - true
+      - false
+    ConstraintDescription: must specify true or false.
+
+  DatabaseDeploy: 
+    Description: Database Deploy specify.
+    Default: false
+    Type: String
+    AllowedValues: 
+      - true
+      - false
+    ConstraintDescription: must specify true or false.
+  
+  BastionAmi:
+    Type: String
+    Default: ami-0a1c2ec61571737db
+
+  BastionInstanceType:
+    Type: String
+    Default: t2.micro
+
+  BastionDeploy: 
+    Description: Bastion Deploy specify.
+    Default: false
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    ConstraintDescription: must specify true or false.
+
+Conditions: 
+  CreateEKSResources: !Equals [ !Ref EKSDeploy, true ]
+  CreateCDNResources: !Equals [ !Ref CDNDeploy, true ]
+  CreateBastion: !Equals [ !Ref BastionDeploy, true ]
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Worker Network Configuration"
+        Parameters:
+          - EKSDeploy
+          - VpcBlock
+          - PublicSubnet01Block
+          - PublicSubnet02Block
+          - PrivateSubnet01Block
+          - PrivateSubnet02Block
+      - 
+        Label:
+          default: "EKS Cluster"
+        Parameters:
+          - EKSClusterName
+          - EKSVersion
+      -
+        Label:
+          default: "Worker Node Configuration"
+        Parameters:
+          - AmiType
+          - EKSNodeGroupName
+          - NodeInstanceType
+          - NodeGroupMinSize
+          - NodeGroupDesiredSize
+          - NodeGroupMaxSize
+          - NodeVolumeSize
+          - KeyName
+      -
+        Label:
+          default: "Database"
+        Parameters:
+          - DatabaseDeploy
+          - DBName
+          - DBInstanceClass
+          - Engine
+          - EngineVersion
+          - MasterUsername
+          - MasterUserPassword
+          - DBSubnetBlock01
+          - DBSubnetBlock02
+      -
+        Label:
+          default: "S3 Content Delivery Network"
+        Parameters:
+          - CDNDeploy
+          - RootDomainName
+      -
+        Label:
+          default: "Bastion Host Deploy"
+        Parameters:
+          - BastionDeploy
+          - BastionAmi
+          - BastionInstanceType
+
+Resources:
+
+  VPC:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock:  !Ref VpcBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-VPC'
+
+  InternetGateway:
+    Condition: CreateEKSResources
+    Type: "AWS::EC2::InternetGateway"
+
+  VPCGatewayAttachment:
+    Condition: CreateEKSResources
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicRouteTable:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Public Subnets
+      - Key: Network
+        Value: Public
+
+  PrivateRouteTable01:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Private Subnet AZ1
+      - Key: Network
+        Value: Private01
+
+  PrivateRouteTable02:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Private Subnet AZ2
+      - Key: Network
+        Value: Private02
+
+  PublicRoute:
+    Condition: CreateEKSResources
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PrivateRoute01:
+    Condition: CreateEKSResources
+    DependsOn:
+    - VPCGatewayAttachment
+    - NatGateway01
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable01
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway01
+
+  PrivateRoute02:
+    Condition: CreateEKSResources
+    DependsOn:
+    - VPCGatewayAttachment
+    - NatGateway02
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable02
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway02
+
+  NatGateway01:
+    Condition: CreateEKSResources
+    DependsOn:
+    - NatGatewayEIP1
+    - PublicSubnet01
+    - VPCGatewayAttachment
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt 'NatGatewayEIP1.AllocationId'
+      SubnetId: !Ref PublicSubnet01
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-NatGatewayAZ1'
+
+  NatGateway02:
+    Condition: CreateEKSResources
+    DependsOn:
+    - NatGatewayEIP2
+    - PublicSubnet02
+    - VPCGatewayAttachment
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt 'NatGatewayEIP2.AllocationId'
+      SubnetId: !Ref PublicSubnet02
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-NatGatewayAZ2'
+
+  NatGatewayEIP1:
+    Condition: CreateEKSResources
+    DependsOn:
+    - VPCGatewayAttachment
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+
+  NatGatewayEIP2:
+    Condition: CreateEKSResources
+    DependsOn:
+    - VPCGatewayAttachment
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+
+  PublicSubnet01:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: Subnet 01
+    Properties:
+      MapPublicIpOnLaunch: true
+      AvailabilityZone:
+        Fn::Select:
+        - '0'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: PublicSubnet01Block
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value: !Sub "${AWS::StackName}-PublicSubnet01"
+      - Key: kubernetes.io/role/elb
+        Value: 1
+
+  PublicSubnet02:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: Subnet 02
+    Properties:
+      MapPublicIpOnLaunch: true
+      AvailabilityZone:
+        Fn::Select:
+        - '1'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: PublicSubnet02Block
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value: !Sub "${AWS::StackName}-PublicSubnet02"
+      - Key: kubernetes.io/role/elb
+        Value: 1
+
+  PrivateSubnet01:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: Subnet 03
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '0'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: PrivateSubnet01Block
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value: !Sub "${AWS::StackName}-PrivateSubnet01"
+      - Key: kubernetes.io/role/internal-elb
+        Value: 1
+
+  PrivateSubnet02:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: Private Subnet 02
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '1'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: PrivateSubnet02Block
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value: !Sub "${AWS::StackName}-PrivateSubnet02"
+      - Key: kubernetes.io/role/internal-elb
+        Value: 1
+
+  PublicSubnet01RouteTableAssociation:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet01
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet02RouteTableAssociation:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet02
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnet01RouteTableAssociation:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet01
+      RouteTableId: !Ref PrivateRouteTable01
+
+  PrivateSubnet02RouteTableAssociation:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet02
+      RouteTableId: !Ref PrivateRouteTable02
+
+  ControlPlaneSecurityGroup:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: ControlPlaneSecurityGroup
+  
+  WorkerNodeSSHSecurityGroup:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: WorkerNodeSSHSecurityGroup
+  
+  DatabaseSubnet01:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: Database Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '0'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: DBSubnetBlock01
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value: !Sub "${AWS::StackName}-DBSubnet01"
+
+  DatabaseSubnet02:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: Database Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '1'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: DBSubnetBlock02
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value: !Sub "${AWS::StackName}-DBSubnet02"
+  
+  DatabaseSubnetGroup:
+    Condition: CreateEKSResources
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: Database Subnet Group
+      SubnetIds: 
+        - !Ref DatabaseSubnet01
+        - !Ref DatabaseSubnet02
+      Tags: 
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-DatabaseSubnetGroup"
+
+  DBSecurityGroup:
+    Condition: CreateEKSResources
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Database Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
+      Tags:
+      - Key: Name
+        Value: DBSecurityGroup
+
+  EKSStack:
+    Condition: CreateEKSResources
+    Type: 'AWS::CloudFormation::Stack'
+    DependsOn:
+      - VPC
+      - PublicSubnet01
+      - PublicSubnet02
+      - PrivateSubnet01
+      - PrivateSubnet02
+      - ControlPlaneSecurityGroup
+      - WorkerNodeSSHSecurityGroup
+
+    Properties:
+      TemplateURL: !Sub >-
+        https://namnd-bucket.s3-ap-northeast-1.amazonaws.com/cloudformation-template/2_eks-nodegroup.yaml
+      Parameters:
+        KeyName: !Ref KeyName
+        AmiType: !Ref AmiType
+        NodeInstanceType: !Ref NodeInstanceType
+        NodeGroupMinSize: !Ref NodeGroupMinSize
+        NodeGroupDesiredSize: !Ref NodeGroupDesiredSize
+        NodeGroupMaxSize: !Ref NodeGroupMaxSize
+        NodeVolumeSize: !Ref NodeVolumeSize
+        EKSClusterName: !Ref EKSClusterName
+        EKSVersion: !Ref EKSVersion 
+        ControlPlaneSecurityGroup: !Ref ControlPlaneSecurityGroup
+        WorkerNodeSSHSecurityGroup: !Ref WorkerNodeSSHSecurityGroup
+        VpcId: !Ref VPC
+        EKSSubnets: !Join [ ",", [ !Ref PublicSubnet01, !Ref PublicSubnet02, !Ref PrivateSubnet01, !Ref PrivateSubnet02 ] ]
+        NodeSubnets: !Join [ ",", [ !Ref PrivateSubnet01, !Ref PrivateSubnet02 ] ]
+        DatabaseDeploy: !Ref DatabaseDeploy
+        DBName: !Ref DBName
+        DBInstanceClass: !Ref DBInstanceClass
+        Engine: !Ref Engine
+        EngineVersion: !Ref EngineVersion
+        MasterUsername: !Ref MasterUsername
+        MasterUserPassword: !Ref MasterUserPassword
+        DBSecurityGroup: !Ref DBSecurityGroup
+        DatabaseSubnetGroup: !Ref DatabaseSubnetGroup
+  
+  S3ContentDeliveryNetwork:
+    Condition: CreateCDNResources
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: !Sub >-
+        https://namnd-bucket.s3-ap-northeast-1.amazonaws.com/cloudformation-template/3_s3-cloudfront.yaml
+      Parameters:
+        RootDomainName: !Ref RootDomainName
+
+  BastionHost:
+    Condition: CreateBastion
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: !Sub >-
+        https://namnd-bucket.s3-ap-northeast-1.amazonaws.com/cloudformation-template/5_BastionHost.yaml
+      Parameters:
+        PublicSubnet: !Ref PublicSubnet01
+        KeyName: !Ref KeyName
+        BastionAmi: !Ref BastionAmi
+        InstanceType: !Ref BastionInstanceType
+        BastionSecurityGroup: !Ref WorkerNodeSSHSecurityGroup
+        BastionDeploy: !Ref BastionDeploy
