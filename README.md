@@ -6,7 +6,7 @@
 # Cloudformation-Template
 - /clouformation-template
 
-# React-CICD-Sample
+# React-CICD-S3-Cloudfront
 - aws: s3 + cloudfront + code commit + code build + code pipeline
 - frontend: react-js + webpack + babel
 - unit-test: jest

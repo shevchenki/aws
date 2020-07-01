@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  RootDomainName:
+    Type: String
+    Default: frontend-pipeline-demo
+    Description: Static host name
+
+Resources:
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref RootDomainName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+    DeletionPolicy: Retain
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      PolicyDocument:
+        Id: MyPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Join 
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref S3Bucket
+                - /*
+      Bucket: !Ref S3Bucket
+
+  S3ContentDeliveryNetwork:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+        - CustomOriginConfig:
+            HTTPPort: '80'
+            OriginProtocolPolicy: http-only
+          DomainName: !GetAtt S3Bucket.DomainName
+          Id: only-origin
+        Comment: CDN for S3-backed website
+        Enabled: 'true'
+        HttpVersion: http2
+        DefaultCacheBehavior:
+          ForwardedValues:
+            QueryString: 'true'
+          TargetOriginId: only-origin
+          ViewerProtocolPolicy: allow-all
+        DefaultRootObject: index.html
+
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt 
+      - S3Bucket
+      - WebsiteURL
+    Description: URL for website hosted on S3
+
+  S3BucketSecureURL:
+    Value: !Join 
+      - ''
+      - - 'https://'
+        - !GetAtt 
+          - S3Bucket
+          - DomainName
+    Description: Name of S3 bucket to hold website content
+  
+  CloudFrontDomainName:
+    Description: "DomainName for Cloudfront Distribution"
+    Value: !GetAtt S3ContentDeliveryNetwork.DomainName

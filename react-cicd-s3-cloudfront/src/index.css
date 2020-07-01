@@ -1,0 +1,75 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+h1.title {
+  font-family: 'Segoe Print',sans-serif;
+  padding: 0.5em;
+  color: #494949;/*文字色*/
+  background: #fffaf4;/*背景色*/
+  border-left: solid 5px #ffaf58;/*左線（実線 太さ 色）*/
+}
+
+.box30 {
+    margin: 0 auto 0 20px;
+    width: 300px;
+    background: #f1f1f1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.22);
+}
+.box30 .box-title {
+    font-size: 1.2em;
+    background: #5fc2f5;
+    padding: 4px;
+    text-align: center;
+    color: #FFF;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+}
+.box30 p {
+    text-align: center;
+    padding: 15px 20px;
+    margin: 0 0;
+}
+
+h2 {
+  position: relative;
+  padding: 8px 15px;
+  margin-left: 40px;
+  background: #def3ff;
+  border-radius: 20px;
+}
+
+h2:before {
+  font-family: "Font Awesome 5 Free";
+  content: "\f111";
+  position: absolute;
+  font-size: 15px;
+  left: -40px;
+  bottom: 0;
+  color: #def3ff;
+}
+
+h2:after {
+  font-family: "Font Awesome 5 Free";
+  content: "\f111";
+  position: absolute;
+  font-size: 23px;
+  left: -23px;
+  bottom: 0;
+  color: #def3ff;
+}
+
+p.item_body {
+  font-family: 'Mv Boli',sans-serif;
+  margin-left: 80px;
+}
