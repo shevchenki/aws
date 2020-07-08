@@ -1,0 +1,775 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "BCCoE Api Gateway",
+    "Resources": {
+        "LambdaInvokePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::GetAtt": ["DataAPIFn", "Arn"]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "s3.amazonaws.com",
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                },
+                "SourceArn": { 
+                    "Fn::GetAtt": ["BcCoEBucket", "Arn"]
+                }
+            }
+        },
+        "BcCoEBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "NotificationConfiguration": {
+                    "LambdaConfigurations": [{
+                        "Event" : "s3:ObjectCreated:Put",
+                        "Filter" : {
+                            "S3Key" : {
+                                "Rules" : [{
+                                    "Name" : "prefix",
+                                    "Value" : "firehose-success/"
+                                }]
+                            }
+                        },
+                        "Function" : {
+                            "Fn::GetAtt": ["DataAPIFn", "Arn"]
+                        }
+                    }]
+                }
+            }
+        },
+        "ProcessorRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ]
+            }
+        },
+        "ProcessorFn": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "resource-api-firehose-lambda-rds",
+                    "S3Key": "firehose-json-to-csv.zip"
+                },
+                "Handler": "index.handler",
+                "MemorySize": "128",
+                "Role": {
+                    "Fn::GetAtt": ["ProcessorRole", "Arn"]
+                },
+                "Runtime": "nodejs8.10",
+                "Timeout": 300
+            }
+        },
+        "DataAPIRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "Data_API_Policy",
+                        "PolicyDocument" : {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "SecretsManagerDbCredentialsAccess",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "secretsmanager:GetSecretValue",
+                                        "secretsmanager:PutResourcePolicy",
+                                        "secretsmanager:PutSecretValue",
+                                        "secretsmanager:DeleteSecret",
+                                        "secretsmanager:DescribeSecret",
+                                        "secretsmanager:TagResource"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "${DBSecret}"
+                                    }
+                                },
+                                {
+                                    "Sid": "RDSDataServiceAccess",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "secretsmanager:CreateSecret",
+                                        "secretsmanager:ListSecrets",
+                                        "secretsmanager:GetRandomPassword",
+                                        "tag:GetResources",
+                                        "rds-data:BatchExecuteStatement",
+                                        "rds-data:BeginTransaction",
+                                        "rds-data:CommitTransaction",
+                                        "rds-data:ExecuteStatement",
+                                        "rds-data:RollbackTransaction"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }  
+                    }
+                ]
+            }
+        },
+        "DataAPIFn": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "resource-api-firehose-lambda-rds",
+                    "S3Key": "Lambda-DataAPI-Aurora-Svl.zip"
+                },
+                "Handler": "index.handler",
+                "MemorySize": "128",
+                "Role": {
+                    "Fn::GetAtt": ["DataAPIRole", "Arn"]
+                },
+                "Runtime": "nodejs8.10",
+                "Timeout": 10,
+                "Environment": {
+                    "Variables": {
+                        "RESOURCE_ARN": {
+                            "Fn::Sub": "arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraSvlInstance}"
+                        },
+                        "SECRET_ARN": {
+                            "Fn::Sub": "${DBSecret}"
+                        },
+                        "DATABASE_NAME": "postgres"
+                    }
+                }
+            }
+        },
+        "FirehoseRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "firehose.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole",
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "FirehosePolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "firehose_delivery_policy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:AbortMultipartUpload",
+                                "s3:GetBucketLocation",
+                                "s3:GetObject",
+                                "s3:ListBucket",
+                                "s3:ListBucketMultipartUploads",
+                                "s3:PutObject"
+                            ],
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            {
+                                                "Ref": "BcCoEBucket"
+                                            }
+                                        ]
+                                    ]
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            {
+                                                "Ref": "BcCoEBucket"
+                                            },
+                                            "*"
+                                        ]
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "lambda:InvokeFunction",
+                                "lambda:GetFunctionConfiguration"
+                            ],
+                            "Resource": {
+                                "Fn::GetAtt": ["ProcessorFn", "Arn"]
+                            }
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "FirehoseRole"
+                    }
+                ]
+            }
+        },
+        "FirehoseLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {}
+        },
+        "Firehose": {
+            "Type": "AWS::KinesisFirehose::DeliveryStream",
+            "Properties": {
+                "DeliveryStreamType": "DirectPut",
+                "ExtendedS3DestinationConfiguration": {
+                    "BucketARN": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:aws:s3:::",
+                                {
+                                    "Ref": "BcCoEBucket"
+                                }
+                            ]
+                        ]
+                    },
+                    "BufferingHints": {
+                        "IntervalInSeconds": "60",
+                        "SizeInMBs": "1"
+                    },
+                    "CompressionFormat": "UNCOMPRESSED",
+                    "Prefix": "firehose-success/",
+                    "ErrorOutputPrefix": "firehose-error/",
+                    "RoleARN": {
+                        "Fn::GetAtt": ["FirehoseRole", "Arn"]
+                    },
+                    "ProcessingConfiguration": {
+                        "Enabled": "true",
+                        "Processors": [
+                            {
+                                "Parameters": [
+                                    {
+                                        "ParameterName": "LambdaArn",
+                                        "ParameterValue": {
+                                            "Fn::GetAtt": ["ProcessorFn", "Arn"]
+                                        }
+                                    },
+                                    {
+                                        "ParameterName": "NumberOfRetries",
+                                        "ParameterValue": "3"
+                                    },
+                                    {
+                                        "ParameterName": "BufferSizeInMBs",
+                                        "ParameterValue": "3"
+                                    },
+                                    {
+                                        "ParameterName": "BufferIntervalInSeconds",
+                                        "ParameterValue": "60"
+                                    }
+                                ],
+                                "Type": "Lambda"
+                            }
+                        ]
+                    },
+                    "CloudWatchLoggingOptions": {
+                        "Enabled": true,
+                        "LogGroupName": {
+                            "Ref": "FirehoseLogGroup"
+                        },
+                        "LogStreamName": "S3Delivery"
+                    }
+                }
+            }
+        },
+        "ApiRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": ["apigateway.amazonaws.com"]
+                            },
+                            "Action": ["sts:AssumeRole"]
+                        }
+                    ]
+                }
+            }
+        },
+        "ApiPolicy": {
+            "DependsOn": ["ApiRole"],
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "push-to-firehose",
+                "Roles": [
+                    {
+                        "Ref": "ApiRole"
+                    }
+                ],
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "Stmt",
+                            "Effect": "Allow",
+                            "Action": ["firehose:PutRecord", "firehose:PutRecordBatch"],
+                            "Resource": ["*"]
+                        }
+                    ]
+                }
+            }
+        },
+        "Api": {
+            "Type": "AWS::ApiGateway::RestApi",
+            "Properties": {
+                "ApiKeySourceType": "HEADER",
+                "Body": {
+                    "openapi": "3.0.1",
+                    "info": {
+                        "title": "bccoeApi",
+                        "version": "1.0.0"
+                    },
+                    "paths": {
+                        "/pushdata": {
+                            "post": {
+                                "responses": {
+                                    "200": {
+                                        "description": "200 response",
+                                        "content": {
+                                            "application/json": {
+                                                "schema": {
+                                                    "$ref": "#/components/schemas/Empty"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "x-amazon-apigateway-integration": {
+                                    "credentials": {
+                                        "Fn::GetAtt": ["ApiRole", "Arn"]
+                                    },
+                                    "uri": {
+                                        "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:firehose:action/PutRecord"
+                                    },
+                                    "responses": {
+                                        "default": {
+                                            "statusCode": "200"
+                                        }
+                                    },
+                                    "passthroughBehavior": "when_no_templates",
+                                    "httpMethod": "POST",
+                                    "requestTemplates": {
+                                        "application/json": {
+                                            "Fn::Sub": "{\r\n  \"DeliveryStreamName\": \"${Firehose}\",\r\n  \"Record\": {\r\n    \"Data\": \"$util.base64Encode($input.json('$.Data'))\"\r\n  }\r\n}"
+                                        }
+                                    },
+                                    "type": "aws"
+                                }
+                            }
+                        }
+                    },
+                    "components": {
+                        "schemas": {
+                            "Empty": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "Name": "bccoeApi"
+            }
+        },
+        "ApiDeployment": {
+            "Type": "AWS::ApiGateway::Deployment",
+            "Properties": {
+                "RestApiId": {
+                    "Ref": "Api"
+                }
+            }
+        },
+        "ApiStage": {
+            "Type": "AWS::ApiGateway::Stage",
+            "Properties": {
+                "DeploymentId": {
+                    "Ref": "ApiDeployment"
+                },
+                "RestApiId": {
+                    "Ref": "Api"
+                },
+                "StageName": "prd"
+            }
+        },
+        "ApiKey": {
+            "Type": "AWS::ApiGateway::ApiKey",
+            "Properties": {
+                "Enabled": "true",
+                "StageKeys": [
+                    {
+                        "RestApiId": {
+                            "Ref": "Api"
+                        },
+                        "StageName": "prd"
+                    }
+                ],
+                "Name": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "ApiKey"
+                        ]
+                    ]
+                },
+                "Description": "API key for BCCoE Api."
+            },
+            "DependsOn": ["Api", "ApiStage"]
+        },
+        "ApiUsagePlan": {
+            "Type": "AWS::ApiGateway::UsagePlan",
+            "Properties": {
+                "ApiStages": [
+                    {
+                        "ApiId": {
+                            "Ref": "Api"
+                        },
+                        "Stage": {
+                            "Ref": "ApiStage"
+                        }
+                    }
+                ],
+                "Throttle": {
+                    "BurstLimit": 200,
+                    "RateLimit": 100
+                },
+                "UsagePlanName": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "ApiUsagePlan"
+                        ]
+                    ]
+                },
+                "Description": "API usage plan for BCCoE Api."
+            },
+            "DependsOn": ["Api", "ApiStage"]
+        },
+        "ApiUsagePlanKey": {
+            "Type": "AWS::ApiGateway::UsagePlanKey",
+            "Properties": {
+                "KeyId": {
+                    "Ref": "ApiKey"
+                },
+                "KeyType": "API_KEY",
+                "UsagePlanId": {
+                    "Ref": "ApiUsagePlan"
+                }
+            },
+            "DependsOn": ["ApiKey", "ApiUsagePlan"]
+        },
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "10.0.0.0/24",
+                "EnableDnsSupport": true,
+                "EnableDnsHostnames": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Demo VPC"
+                    }
+                ]
+            }
+        },
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Internet Gateway"
+                    }
+                ]
+            }
+        },
+        "InternetGatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "SubnetMasterDB": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.0.0/28",
+                "MapPublicIpOnLaunch": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Master Subnet (AZ1)"
+                    }
+                ]
+            }
+        },
+        "SubnetReplicaDB": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "1",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.0.16/28",
+                "MapPublicIpOnLaunch": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Replica Subnet (AZ2)"
+                    }
+                ]
+            }
+        },
+        "PublicRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Public Route Table"
+                    }
+                ]
+            }
+        },
+        "DefaultPublicRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "InternetGatewayAttachment",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "SubnetMasterRouteTableAssoc": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetMasterDB"
+                }
+            }
+        },
+        "SubnetReplicaRouteTableAssoc": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetReplicaDB"
+                }
+            }
+        },
+        "DBSubnetGroup": {
+            "Properties": {
+                "DBSubnetGroupDescription": "DBSubnetGroup for RDS instances",
+                "SubnetIds": [
+                    {
+                        "Ref": "SubnetMasterDB"
+                    },
+                    {
+                        "Ref": "SubnetReplicaDB"
+                    }
+                ]
+            },
+            "Type": "AWS::RDS::DBSubnetGroup"
+        },
+        "VpcDefaultSecurityGroupIngress": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+                "GroupId": {
+                    "Fn::GetAtt": ["VPC", "DefaultSecurityGroup"]
+                },
+                "CidrIp": "0.0.0.0/0",
+                "IpProtocol": "tcp",
+                "FromPort": 5432,
+                "ToPort": 5432
+            }
+        },
+        "AuroraSvlInstance": {
+            "Type": "AWS::RDS::DBCluster",
+            "Properties": {
+                "BackupRetentionPeriod": 7,
+                "DBClusterIdentifier": "aurora-svl-instance",
+                "Engine": "aurora-postgresql",
+                "EngineMode": "serverless",
+                "EngineVersion": "10.7",
+                "MasterUsername": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "{{resolve:secretsmanager:",
+                            { "Ref": "DBSecret" },
+                            ":SecretString:username}}"
+                        ]
+                    ]
+                },
+                "MasterUserPassword": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "{{resolve:secretsmanager:",
+                            { "Ref": "DBSecret" },
+                            ":SecretString:password}}"
+                        ]
+                    ]
+                },
+                "Port": 5432,
+                "EnableHttpEndpoint": true,
+                "ScalingConfiguration": {
+                    "AutoPause": true,
+                    "MaxCapacity": 4,
+                    "MinCapacity": 2,
+                    "SecondsUntilAutoPause": 1800
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Demo Aurora Serveless PostgreSQL"
+                    }
+                ],
+                "VpcSecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": ["VPC", "DefaultSecurityGroup"]
+                    }
+                ],
+                "DBSubnetGroupName": {
+                    "Ref": "DBSubnetGroup"
+                }
+            }
+        },
+        "DBSecret": {
+            "Type": "AWS::SecretsManager::Secret",
+            "Properties": {
+                "Name": "AuroraUserSecret",
+                "Description": "RDS database auto-generated user password",
+                "GenerateSecretString": {
+                    "SecretStringTemplate": "{\"username\":\"bccoe_master\"}",
+                    "GenerateStringKey": "password",
+                    "PasswordLength": 30,
+                    "ExcludeCharacters": "\"@/\\"
+                },
+                "Tags": [
+                    {
+                        "Key": "AppName",
+                        "Value": "DBSecret"
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "ApiUrl": {
+            "Value": {
+                "Fn::Sub": "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/prd/pushdata"
+            }
+        },
+        "ApiKeyUrl": {
+            "Value": {
+                "Fn::Sub": "https://${AWS::Region}.console.aws.amazon.com/apigateway/home?region=${AWS::Region}#/api-keys/${ApiKey}"
+            }
+        },
+        "DatabaseClusterArn": {
+            "Value": {
+                "Fn::Sub": "arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraSvlInstance}"
+            }
+        },
+        "DatabaseSecretArn": {
+            "Value": {
+                "Fn::Sub": "${DBSecret}"
+            }
+        }
+    }
+}
