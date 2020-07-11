@@ -3,7 +3,7 @@
 ![](apigateway-firehose-aurora-serverless.png)
 
 ### 2. Logic Diagram:
-![](logic-diagram.png)
+![](Logic-Diagram.png)
 
 ### 3. 処理流れ	
 - Userから定期的にAPI Gateway呼び出し、位置情報をプッシュする
