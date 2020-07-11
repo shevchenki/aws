@@ -17,9 +17,9 @@
 	- SQSでRDSにデータ書き込むため、Lambdaを呼び出す。
 
 ## II. エラーハンドリング							
-- 1.API Gatewayのインプットと設定されたサンプルが違う									
-- 2.RDSにConnectionの数がオーバーされる									
-- 3.Firehoseに溜るデータが大きくて、Lambdaが書き込めない					
+- API Gatewayのインプットと設定されたサンプルが違う									
+- RDSにConnectionの数がオーバーされる									
+- Firehoseに溜るデータが大きくて、Lambdaが書き込めない					
 									
 ### 1. API Gatewayのインプットと設定されたサンプルが違う　→　Firehoseでエラーハンドリングされる		
 - エラーのログはS3の「processing-failed/2020/…」に保存しておく								
