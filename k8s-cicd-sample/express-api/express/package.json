@@ -1,0 +1,25 @@
+{
+  "name": "myserver",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "create_table": "node create_vote_table.js",
+    "server": "nodemon ./bin/www --exec babel-node",
+    "start": "concurrently \"npm run create_table\" \"npm run server\""
+  },
+  "dependencies": {
+    "aws-sdk": "^2.682.0",
+    "concurrently": "^5.2.0",
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "ejs": "~2.6.1",
+    "express": "~4.16.1",
+    "http-errors": "~1.6.3",
+    "morgan": "~1.9.1",
+    "validator": "^13.0.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.7.0"
+  }
+}

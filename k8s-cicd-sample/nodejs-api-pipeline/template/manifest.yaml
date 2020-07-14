@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vote-dog-cat-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: dynamodb
+  name: dynamodb
+  namespace: vote-dog-cat-api
+spec:
+  ports:
+  - name: "8000"
+    port: 8000
+    targetPort: 8000
+  selector:
+    app: dynamodb
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dynamodb
+  namespace: vote-dog-cat-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dynamodb
+  template:
+    metadata:
+      labels:
+        app: dynamodb
+    spec:
+      containers:
+      - name: dynamodb
+        image: amazon/dynamodb-local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: appserver
+  name: appserver
+  namespace: vote-dog-cat-api
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: appserver
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appserver
+  namespace: vote-dog-cat-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: appserver
+  template:
+    metadata:
+      labels:
+        app: appserver
+    spec:
+      containers:
+      - name: appserver
+        image: 464410800995.dkr.ecr.ap-northeast-1.amazonaws.com/eks-repository/api-sample:IMAGE_TAG
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        ports:
+        - containerPort: 8080
+      restartPolicy: Always

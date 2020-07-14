@@ -1,0 +1,48 @@
+version: 0.2
+
+env:
+  git-credential-helper: yes
+
+phases:
+
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+      - curl https://raw.githubusercontent.com/TimothyJones/codepipeline-git-metadata-example/master/scripts/codebuild-git-wrapper.sh -o codebuild-git-wrapper.sh
+      - chmod +x codebuild-git-wrapper.sh
+      - GIT_REPOSITORY_URI=https://git-codecommit.ap-northeast-1.amazonaws.com/v1/repos/$RepositoryName
+      - ./codebuild-git-wrapper.sh $GIT_REPOSITORY_URI master
+      - IMAGE_TAG=$(git rev-parse --short HEAD)
+      - ACCOUNT_ID=${CODEBUILD_BUILD_ARN} && IFS=':' && set -- $ACCOUNT_ID && ACCOUNT_ID=$5
+      - REPOSITORY_URI=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME     
+  
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...    
+      - docker build . -t $IMAGE_REPO_NAME:latest
+      - echo docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - docker tag $IMAGE_REPO_NAME:latest $REPOSITORY_URI:$IMAGE_TAG  
+      - docker tag $IMAGE_REPO_NAME:latest $REPOSITORY_URI:latest
+
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:latest
+      - printf '[{"name":"<container-definition>","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > artifacts.json
+# kubernetes build
+      - InfraRepositoryName=$InfraRepositoryName
+      - git config --global user.email "codebuild@example.com"
+      - git config --global user.name "codebuild_user"
+      - git clone https://git-codecommit.ap-northeast-1.amazonaws.com/v1/repos/$InfraRepositoryName
+      - cd $InfraRepositoryName
+      - cat ./template/manifest.yaml | sed "s/IMAGE_TAG/$IMAGE_TAG/" > ./manifest/manifest.yaml
+      - git add .
+      - git commit -m "code build auto commit"
+      - git push
+
+artifacts:
+  files: artifacts.json
