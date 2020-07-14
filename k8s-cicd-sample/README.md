@@ -1,3 +1,8 @@
+## I. Reference information
+![](cicd-pipeline.png)
+</br>
+![](cicd-pipeline2.png)
+
 ## I. Create Codecommit repository
 - repo1 name: express-api
 - repo2 name: nodejs-api-pipeline
