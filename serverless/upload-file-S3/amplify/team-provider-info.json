@@ -1,0 +1,37 @@
+{
+    "dev": {
+        "awscloudformation": {
+            "AuthRoleName": "amplify-uploadfiles3-dev-130148-authRole",
+            "UnauthRoleArn": "arn:aws:iam::254077209125:role/amplify-uploadfiles3-dev-130148-unauthRole",
+            "AuthRoleArn": "arn:aws:iam::254077209125:role/amplify-uploadfiles3-dev-130148-authRole",
+            "Region": "us-east-1",
+            "DeploymentBucketName": "amplify-uploadfiles3-dev-130148-deployment",
+            "UnauthRoleName": "amplify-uploadfiles3-dev-130148-unauthRole",
+            "StackName": "amplify-uploadfiles3-dev-130148",
+            "StackId": "arn:aws:cloudformation:us-east-1:254077209125:stack/amplify-uploadfiles3-dev-130148/63c5bab0-56ba-11ea-a8c7-12505ef78976",
+            "AmplifyAppId": "d2eh2n8np57k24"
+        },
+        "categories": {
+            "auth": {
+                "uploadfiles3ff5cf0dc": {}
+            }
+        }
+    },
+    "namnd": {
+        "awscloudformation": {
+            "AuthRoleName": "uploadfiles3-namnd-20200225113435-authRole",
+            "UnauthRoleArn": "arn:aws:iam::424920095577:role/uploadfiles3-namnd-20200225113435-unauthRole",
+            "AuthRoleArn": "arn:aws:iam::424920095577:role/uploadfiles3-namnd-20200225113435-authRole",
+            "Region": "us-west-2",
+            "DeploymentBucketName": "uploadfiles3-namnd-20200225113435-deployment",
+            "UnauthRoleName": "uploadfiles3-namnd-20200225113435-unauthRole",
+            "StackName": "uploadfiles3-namnd-20200225113435",
+            "StackId": "arn:aws:cloudformation:us-west-2:424920095577:stack/uploadfiles3-namnd-20200225113435/5daaa290-5777-11ea-a3cb-069318d3f048"
+        },
+        "categories": {
+            "auth": {
+                "uploadfiles3ff5cf0dc": {}
+            }
+        }
+    }
+}

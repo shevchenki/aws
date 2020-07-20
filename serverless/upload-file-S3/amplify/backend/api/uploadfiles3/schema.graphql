@@ -1,0 +1,9 @@
+type Post @model{
+  id: ID!
+  userName: String
+  fileName: String
+  fileSize: String
+  uploadDate: String
+  updateDate: String
+  description: String
+}
