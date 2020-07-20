@@ -1,0 +1,10 @@
+{
+	"auth": {
+		"amplifyuploadfiles3f60f909c": {
+			"service": "Cognito",
+			"providerPlugin": "awscloudformation",
+			"dependsOn": [],
+			"customAuth": false
+		}
+	}
+}
