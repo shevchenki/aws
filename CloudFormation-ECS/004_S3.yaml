@@ -1,0 +1,253 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 CloudFormation Template
+
+#+-----------------------------------------------------------------------------+
+#|      Metadata                                                               |
+#+-----------------------------------------------------------------------------+
+Metadata:
+
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: General Parameters
+        Parameters:
+          - Prefix
+          - EnvironmentType
+
+#+-----------------------------------------------------------------------------+
+#|      Parameters                                                             |
+#+-----------------------------------------------------------------------------+
+Parameters:
+
+  Prefix:
+    Description: Prefix for all resources
+    Type: String
+    MaxLength: 13
+    Default: hyoban-prod
+
+  EnvironmentType:
+    Description: Environment type
+    Type: String
+    AllowedValues:
+      - Development
+      - Staging
+      - Production
+    Default: Production
+
+#+-----------------------------------------------------------------------------+
+#|      Conditions                                                             |
+#+-----------------------------------------------------------------------------+
+Conditions:
+
+  ResourcesForDevelopment:
+    !Equals [!Ref EnvironmentType, Development]
+  ResourcesForStaging:
+    Fn::Or:
+      - !Equals [!Ref EnvironmentType, Staging]
+      - !Equals [!Ref EnvironmentType, Production]
+  ResourcesForProduction:
+    !Equals [!Ref EnvironmentType, Production]
+  ResourcesNotForProduction:
+    !Not [!Equals [!Ref EnvironmentType, Production]]
+
+#+-----------------------------------------------------------------------------+
+#|      Resources                                                              |
+#+-----------------------------------------------------------------------------+
+Resources:
+
+  #+---------------------------------------------------------------------------+
+  #|      S3 - Bucket - Private                                                |
+  #+---------------------------------------------------------------------------+
+  S3BucketPrivate:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl:  Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName: !Sub ${Prefix}-s3-bucket-private
+      LifecycleConfiguration:
+        Rules:
+          - AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Id: !Sub ${Prefix}-s3-bucket-private-lifecycle
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-s3-bucket-private
+
+  #+---------------------------------------------------------------------------+
+  #|      S3 - Bucket - Log                                                    |
+  #+---------------------------------------------------------------------------+
+  S3BucketLog:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl:  Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName: !Sub ${Prefix}-s3-bucket-log
+      LifecycleConfiguration:
+        Rules:
+          - AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Id: !Sub ${Prefix}-s3-bucket-log-lifecycle
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-s3-bucket-log
+  S3BucketLogPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn:
+      - S3BucketLog
+    Properties:
+      Bucket: !Sub ${Prefix}-s3-bucket-log
+      PolicyDocument:  !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "s3:GetBucketAcl",
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::${Prefix}-s3-bucket-log",
+              "Principal": {
+                "Service": "logs.${AWS::Region}.amazonaws.com"
+              }
+            },
+            {
+              "Action": "s3:PutObject" ,
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::${Prefix}-s3-bucket-log/*",
+              "Condition": {
+                "StringEquals": {
+                  "s3:x-amz-acl": "bucket-owner-full-control"
+                }
+              },
+              "Principal": {
+                "Service": "logs.${AWS::Region}.amazonaws.com"
+              }
+            }
+          ]
+        }
+
+  #+---------------------------------------------------------------------------+
+  #|      S3 - Bucket - Public                                                 |
+  #+---------------------------------------------------------------------------+
+  S3BucketPublic:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName: !Sub ${Prefix}-s3-bucket-public
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - '*'
+            ExposedHeaders:
+              - Content-Length
+              - Content-Type
+              - Cache-Control
+            Id: !Sub ${Prefix}-s3-bucket-public-cors-rules-1
+            MaxAge: 3600
+      LifecycleConfiguration:
+        Rules:
+          - AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Id: !Sub ${Prefix}-s3-bucket-public-lifecycle
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      # WebsiteConfiguration:
+      #   IndexDocument: index.html
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-s3-bucket-public
+  S3BucketPublicPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn:
+      - S3BucketPublic
+    Properties:
+      Bucket: !Sub ${Prefix}-s3-bucket-public
+      PolicyDocument:  !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetObject"
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::${Prefix}-s3-bucket-public/*",
+              "Principal": "*"
+            }
+          ]
+        }
+
+#+-----------------------------------------------------------------------------+
+#|         Outputs                                                             |
+#+-----------------------------------------------------------------------------+
+Outputs:
+
+  S3BucketPublicArn:
+    Description: The ARN of the S3BucketPublic
+    Value: !GetAtt S3BucketPublic.Arn
+    Export:
+      Name: !Sub ${Prefix}-s3-bucket-public-arn
+  S3BucketPublic:
+    Description: The Name of the S3BucketPublic
+    Value: !Ref S3BucketPublic
+    Export:
+      Name: !Sub ${Prefix}-s3-bucket-public
+
+  S3BucketLogArn:
+    Description: The ARN of the S3BucketLog
+    Value: !GetAtt S3BucketLog.Arn
+    Export:
+      Name: !Sub ${Prefix}-s3-bucket-log-arn
+  S3BucketLog:
+    Description: The Name of the S3BucketLog
+    Value: !Ref S3BucketLog
+    Export:
+      Name: !Sub ${Prefix}-s3-bucket-log
+
+  S3BucketPrivateArn:
+    Description: The ARN of the S3BucketPrivate
+    Value: !GetAtt S3BucketPrivate.Arn
+    Export:
+      Name: !Sub ${Prefix}-s3-bucket-private-arn
+  S3BucketPrivate:
+    Description: The Name of the S3BucketPrivate
+    Value: !Ref S3BucketPrivate
+    Export:
+      Name: !Sub ${Prefix}-s3-bucket-private

@@ -1,0 +1,259 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Redis CloudFormation Template
+
+#+-----------------------------------------------------------------------------+
+#|      Metadata                                                               |
+#+-----------------------------------------------------------------------------+
+Metadata:
+
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: General Parameters
+        Parameters:
+          - Prefix
+          - EnvironmentType
+      - Label:
+          default: Redis informations
+        Parameters:
+          - RedisCacheNodeType
+
+#+-----------------------------------------------------------------------------+
+#|      Parameters                                                             |
+#+-----------------------------------------------------------------------------+
+Parameters:
+
+  Prefix:
+    Description: Prefix for all resources
+    Type: String
+    MaxLength: 13
+    Default: hyoban-prod
+
+  EnvironmentType:
+    Description: Environment type
+    Type: String
+    AllowedValues:
+      - Development
+      - Staging
+      - Production
+    Default: Production
+
+  RedisCacheNodeType:
+    Description: 'Redis Cache Node Type. Use "cache.t3.micro" if "EnvironmentType" is "Development"'
+    Type: String
+    AllowedValues:
+      - cache.t3.micro
+      - cache.t2.micro
+      - cache.t3.small
+      - cache.t2.small
+      - cache.t3.medium
+      - cache.t2.medium
+      - cache.m5.large
+      - cache.m4.large
+      - cache.r5.large
+      - cache.r4.large
+      - cache.m5.xlarge
+      - cache.m4.xlarge
+      - cache.r5.xlarge
+      - cache.r4.xlarge
+      - cache.m5.2xlarge
+      - cache.m4.2xlarge
+      - cache.r5.2xlarge
+      - cache.r4.2xlarge
+      - cache.m5.4xlarge
+      - cache.m4.4xlarge
+      - cache.r5.4xlarge
+      - cache.r4.4xlarge
+      - cache.r4.8xlarge
+      - cache.m4.10xlarge
+      - cache.m5.12xlarge
+      - cache.r5.12xlarge
+      - cache.r4.16xlarge
+      - cache.m5.24xlarge
+      - cache.r5.24xlarge
+    # Default: cache.r5.large
+    Default: cache.t3.medium
+    # taken at 2019-12-25T17:41:00Z
+    # Price Per Hour  Cache Node Type     vCPU  Memory (GiB)  Network Performance
+    #  0.026          cache.t3.micro       2    0.5           Up to 5 Gigabit
+    #  0.026          cache.t2.micro       1    0.555         Low to Moderate
+    #  0.052          cache.t3.small       2    1.37          Up to 5 Gigabit
+    #  0.052          cache.t2.small       1    1.55          Low to Moderate
+    #  0.103          cache.t3.medium      2    3.09          Up to 5 Gigabit
+    #  0.104          cache.t2.medium      2    3.22          Low to Moderate
+    #  0.201          cache.m5.large       2    6.38          High
+    #  0.226          cache.m4.large
+    #  0.259          cache.r5.large       2   13.07          Up to 10 Gigabit
+    #  0.273          cache.r4.large       2   12.3           Up to 10 Gigabit
+    #  0.402          cache.m5.xlarge      4   12.93          High
+    #  0.452          cache.m4.xlarge
+    #  0.517          cache.r5.xlarge      4   26.32          Up to 10 Gigabit
+    #  0.546          cache.r4.xlarge      4   25.05          Up to 10 Gigabit
+    #  0.804          cache.m5.2xlarge     8   26.04          High
+    #  0.904          cache.m4.2xlarge     8   29.70          High
+    #  1.035          cache.r5.2xlarge     8   52.82          Up to 10 Gigabit
+    #  1.092          cache.r4.2xlarge     8   50.47          Up to 10 Gigabit
+    #  1.607          cache.m5.4xlarge    16   52.26          High
+    #  1.808          cache.m4.4xlarge    16   60.78          High
+    #  2.069          cache.r5.4xlarge    16  105.81          Up to 10 Gigabit
+    #  2.184          cache.r4.4xlarge    16  101.38          Up to 10 Gigabit
+    #  4.368          cache.r4.8xlarge    32  203.26          10 Gigabit
+    #  4.520          cache.m4.10xlarge   40  154.64          10 Gigabit
+    #  4.821          cache.m5.12xlarge   48  157.12          10 Gigabit
+    #  6.207          cache.r5.12xlarge   48  317.77          10 Gigabit
+    #  8.736          cache.r4.16xlarge   64  407.00          25 Gigabit
+    #  9.642          cache.m5.24xlarge   96  314.32          25 Gigabit
+    # 12.414          cache.r5.24xlarge   96  635.61          25 Gigabit
+
+#+-----------------------------------------------------------------------------+
+#|      Conditions                                                             |
+#+-----------------------------------------------------------------------------+
+Conditions:
+
+  ResourcesForDevelopment:
+    !Equals [!Ref EnvironmentType, Development]
+  ResourcesForStaging:
+    Fn::Or:
+      - !Equals [!Ref EnvironmentType, Staging]
+      - !Equals [!Ref EnvironmentType, Production]
+  ResourcesForProduction:
+    !Equals [!Ref EnvironmentType, Production]
+  ResourcesNotForProduction:
+    !Not [!Equals [!Ref EnvironmentType, Production]]
+
+#+-----------------------------------------------------------------------------+
+#|      Resources                                                              |
+#+-----------------------------------------------------------------------------+
+Resources:
+
+  #+---------------------------------------------------------------------------+
+  #|      Redis - SubnetGroup                                                  |
+  #+---------------------------------------------------------------------------+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      CacheSubnetGroupName: !Sub ${Prefix}-redis-subnet-group
+      Description: !Sub ${Prefix}-redis-subnet-group
+      SubnetIds:
+        Fn::If:
+          - ResourcesForProduction
+          - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-redis-a
+            - Fn::ImportValue: !Sub ${Prefix}-subnet-private-redis-b
+          - Fn::If:
+              - ResourcesForStaging
+              - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-redis-a
+                - Fn::ImportValue: !Sub ${Prefix}-subnet-private-redis-b
+              - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-redis-a
+      # Tags:
+      #   - Key: Name
+      #     Value: !Sub ${Prefix}-redis-subnet-group
+
+  #+---------------------------------------------------------------------------+
+  #|      Redis - ParameterGroup                                               |
+  #+---------------------------------------------------------------------------+
+  RedisParameterGroup:
+    Type: AWS::ElastiCache::ParameterGroup
+    Properties:
+      CacheParameterGroupFamily: redis5.0
+      Description: !Sub ${Prefix}-redis-parameter-group
+      Properties: {
+        'cluster-enabled': 'yes'
+      }
+      # Tags:
+      #   - Key: Name
+      #     Value: !Sub ${Prefix}-redis-parameter-group
+
+  #+---------------------------------------------------------------------------+
+  #|      Redis - ReplicationGroup                                             |
+  #+---------------------------------------------------------------------------+
+  RedisReplicationGroup:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      AutomaticFailoverEnabled: true
+      CacheNodeType:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref RedisCacheNodeType
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref RedisCacheNodeType
+              - cache.t3.micro
+      CacheParameterGroupName: !Ref RedisParameterGroup
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      Engine: redis
+      EngineVersion: 5.0.6
+      NodeGroupConfiguration:
+        Fn::If:
+          - ResourcesForProduction
+          - - NodeGroupId: 1
+              PrimaryAvailabilityZone:
+                Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+              ReplicaAvailabilityZones:
+                - Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+                - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+            - NodeGroupId: 2
+              PrimaryAvailabilityZone:
+                Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+              ReplicaAvailabilityZones:
+                - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+                - Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+          - Fn::If:
+              - ResourcesForStaging
+              - - NodeGroupId: 1
+                  PrimaryAvailabilityZone:
+                    Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+                  ReplicaAvailabilityZones:
+                    - Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+                    - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+                - NodeGroupId: 2
+                  PrimaryAvailabilityZone:
+                    Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+                  ReplicaAvailabilityZones:
+                    - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+                    - Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+              - - NodeGroupId: 1
+                  PrimaryAvailabilityZone:
+                    Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+                  ReplicaAvailabilityZones:
+                    - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+                    - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+      NumNodeGroups:
+        Fn::If:
+          - ResourcesForProduction
+          - 2
+          - Fn::If:
+              - ResourcesForStaging
+              - 2
+              - 1
+      Port: 6379
+      PreferredMaintenanceWindow: sun:17:00-sun:18:00
+      ReplicasPerNodeGroup:
+        Fn::If:
+          - ResourcesForProduction
+          - 2
+          - Fn::If:
+              - ResourcesForStaging
+              - 2
+              - 2
+      ReplicationGroupDescription: !Sub ${Prefix}-redis-replication-group
+      # custom-named resource
+      ReplicationGroupId: !Sub ${Prefix}-redis
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub ${Prefix}-sg-redis
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-redis-replication-group
+
+#+-----------------------------------------------------------------------------+
+#|         Outputs                                                             |
+#+-----------------------------------------------------------------------------+
+Outputs:
+
+  #+---------------------------------------------------------------------------+
+  #|      Redis - Configuration Endpoint                                       |
+  #+---------------------------------------------------------------------------+
+  RedisConfigurationEndpoint:
+    Description: Redis Configuration Endpoint
+    Value: !GetAtt RedisReplicationGroup.ConfigurationEndPoint.Address
+    Export:
+      Name: !Sub ${Prefix}-redis-configuration-endpoint

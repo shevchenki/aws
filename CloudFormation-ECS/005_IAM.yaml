@@ -1,0 +1,1144 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM CloudFormation Template
+
+#+-----------------------------------------------------------------------------+
+#|      Metadata                                                               |
+#+-----------------------------------------------------------------------------+
+Metadata:
+
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: General Parameters
+        Parameters:
+          - Prefix
+          - EnvironmentType
+          - AllowedCidrList
+
+#+-----------------------------------------------------------------------------+
+#|      Parameters                                                             |
+#+-----------------------------------------------------------------------------+
+Parameters:
+
+  Prefix:
+    Description: Prefix for all resources
+    Type: String
+    MaxLength: 13
+    Default: hyoban-prod
+
+  EnvironmentType:
+    Description: Environment type
+    Type: String
+    AllowedValues:
+      - Development
+      - Staging
+      - Production
+    Default: Production
+
+  AllowedCidrList:
+    Description: 'List of allowed IPv4 CIDRs. For example: "10.0.0.0/16", "192.168.1.1/32"'
+    Type: String
+    AllowedPattern: '^("(([0-9])|([1-9][0-9])|(1([0-9]{2}))|(2[0-4][0-9])|(25[0-5]))((\.(([0-9])|([1-9][0-9])|(1([0-9]{2}))|(2[0-4][0-9])|(25[0-5]))){3})\/(([0-9])|([12][0-9])|(3[0-2]))")((,([ ]*)("(([0-9])|([1-9][0-9])|(1([0-9]{2}))|(2[0-4][0-9])|(25[0-5]))((\.(([0-9])|([1-9][0-9])|(1([0-9]{2}))|(2[0-4][0-9])|(25[0-5]))){3})\/(([0-9])|([12][0-9])|(3[0-2]))"))*)$'
+    Default: '"118.70.81.192/32", "113.164.234.70/32", "222.252.30.111/32", "219.121.2.22/32"'
+
+#+-----------------------------------------------------------------------------+
+#|      Conditions                                                             |
+#+-----------------------------------------------------------------------------+
+Conditions:
+
+  ResourcesForDevelopment:
+    !Equals [!Ref EnvironmentType, Development]
+  ResourcesForStaging:
+    Fn::Or:
+      - !Equals [!Ref EnvironmentType, Staging]
+      - !Equals [!Ref EnvironmentType, Production]
+  ResourcesForProduction:
+    !Equals [!Ref EnvironmentType, Production]
+  ResourcesNotForProduction:
+    !Not [!Equals [!Ref EnvironmentType, Production]]
+
+#+-----------------------------------------------------------------------------+
+#|      Resources                                                              |
+#+-----------------------------------------------------------------------------+
+Resources:
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Group - S3 - Bucket - Private                                  |
+  #+---------------------------------------------------------------------------+
+  IamGroupS3BucketPrivateReadonly:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-s3-bucket-private-readonly
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucketByTags",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketTagging",
+                    "s3:GetInventoryConfiguration",
+                    "s3:GetObjectVersionTagging",
+                    "s3:ListBucketVersions",
+                    "s3:GetBucketLogging",
+                    "s3:ListBucket",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketPolicy",
+                    "s3:GetObjectVersionTorrent",
+                    "s3:GetObjectAcl",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetObjectVersionAcl",
+                    "s3:GetObjectTagging",
+                    "s3:GetMetricsConfiguration",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketPolicyStatus",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:GetBucketWebsite",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketNotification",
+                    "s3:GetReplicationConfiguration",
+                    "s3:ListMultipartUploadParts",
+                    "s3:GetObject",
+                    "s3:GetObjectTorrent",
+                    "s3:GetBucketCORS",
+                    "s3:GetAnalyticsConfiguration",
+                    "s3:GetObjectVersionForReplication",
+                    "s3:GetBucketLocation",
+                    "s3:GetObjectVersion"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::${Prefix}-s3-bucket-private",
+                    "arn:aws:s3:::${Prefix}-s3-bucket-private/*"
+                  ],
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:ListAllMyBuckets",
+                    "s3:ListJobs",
+                    "s3:HeadBucket"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-s3-bucket-private-readonly
+  IamGroupS3BucketPrivateUpdate:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-s3-bucket-private-update
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucketByTags",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketTagging",
+                    "s3:GetInventoryConfiguration",
+                    "s3:PutAnalyticsConfiguration",
+                    "s3:PutAccelerateConfiguration",
+                    "s3:GetObjectVersionTagging",
+                    "s3:ListBucketVersions",
+                    "s3:GetBucketLogging",
+                    "s3:RestoreObject",
+                    "s3:ListBucket",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketPolicy",
+                    "s3:ReplicateObject",
+                    "s3:GetObjectVersionTorrent",
+                    "s3:GetObjectAcl",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketObjectLockConfiguration",
+                    "s3:AbortMultipartUpload",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetObjectVersionAcl",
+                    "s3:GetObjectTagging",
+                    "s3:GetMetricsConfiguration",
+                    "s3:DeleteObject",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketPolicyStatus",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:GetObjectRetention",
+                    "s3:GetBucketWebsite",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketNotification",
+                    "s3:GetReplicationConfiguration",
+                    "s3:ListMultipartUploadParts",
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:PutBucketNotification",
+                    "s3:GetObjectTorrent",
+                    "s3:PutObjectRetention",
+                    "s3:PutBucketLogging",
+                    "s3:GetBucketCORS",
+                    "s3:GetAnalyticsConfiguration",
+                    "s3:GetObjectVersionForReplication",
+                    "s3:GetBucketLocation",
+                    "s3:ReplicateDelete",
+                    "s3:GetObjectVersion"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::${Prefix}-s3-bucket-private",
+                    "arn:aws:s3:::${Prefix}-s3-bucket-private/*"
+                  ],
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:ListAllMyBuckets",
+                    "s3:ListJobs",
+                    "s3:HeadBucket"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-s3-bucket-private-update
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Group - S3 - Bucket - Log                                      |
+  #+---------------------------------------------------------------------------+
+  IamGroupS3BucketLogReadonly:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-s3-bucket-log-readonly
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucketByTags",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketTagging",
+                    "s3:GetInventoryConfiguration",
+                    "s3:GetObjectVersionTagging",
+                    "s3:ListBucketVersions",
+                    "s3:GetBucketLogging",
+                    "s3:ListBucket",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketPolicy",
+                    "s3:GetObjectVersionTorrent",
+                    "s3:GetObjectAcl",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetObjectVersionAcl",
+                    "s3:GetObjectTagging",
+                    "s3:GetMetricsConfiguration",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketPolicyStatus",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:GetBucketWebsite",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketNotification",
+                    "s3:GetReplicationConfiguration",
+                    "s3:ListMultipartUploadParts",
+                    "s3:GetObject",
+                    "s3:GetObjectTorrent",
+                    "s3:GetBucketCORS",
+                    "s3:GetAnalyticsConfiguration",
+                    "s3:GetObjectVersionForReplication",
+                    "s3:GetBucketLocation",
+                    "s3:GetObjectVersion"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::${Prefix}-s3-bucket-log",
+                    "arn:aws:s3:::${Prefix}-s3-bucket-log/*"
+                  ],
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:ListAllMyBuckets",
+                    "s3:ListJobs",
+                    "s3:HeadBucket"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-s3-bucket-log-readonly
+  IamGroupS3BucketLogUpdate:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-s3-bucket-log-update
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucketByTags",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketTagging",
+                    "s3:GetInventoryConfiguration",
+                    "s3:PutAnalyticsConfiguration",
+                    "s3:PutAccelerateConfiguration",
+                    "s3:GetObjectVersionTagging",
+                    "s3:ListBucketVersions",
+                    "s3:GetBucketLogging",
+                    "s3:RestoreObject",
+                    "s3:ListBucket",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketPolicy",
+                    "s3:ReplicateObject",
+                    "s3:GetObjectVersionTorrent",
+                    "s3:GetObjectAcl",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketObjectLockConfiguration",
+                    "s3:AbortMultipartUpload",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetObjectVersionAcl",
+                    "s3:GetObjectTagging",
+                    "s3:GetMetricsConfiguration",
+                    "s3:DeleteObject",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketPolicyStatus",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:GetObjectRetention",
+                    "s3:GetBucketWebsite",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketNotification",
+                    "s3:GetReplicationConfiguration",
+                    "s3:ListMultipartUploadParts",
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:PutBucketNotification",
+                    "s3:GetObjectTorrent",
+                    "s3:PutObjectRetention",
+                    "s3:PutBucketLogging",
+                    "s3:GetBucketCORS",
+                    "s3:GetAnalyticsConfiguration",
+                    "s3:GetObjectVersionForReplication",
+                    "s3:GetBucketLocation",
+                    "s3:ReplicateDelete",
+                    "s3:GetObjectVersion"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::${Prefix}-s3-bucket-log",
+                    "arn:aws:s3:::${Prefix}-s3-bucket-log/*"
+                  ],
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:ListAllMyBuckets",
+                    "s3:ListJobs",
+                    "s3:HeadBucket"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-s3-bucket-log-update
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Group - S3 - Bucket - Public                                   |
+  #+---------------------------------------------------------------------------+
+  IamGroupS3BucketPublicReadonly:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-s3-bucket-public-readonly
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucketByTags",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketTagging",
+                    "s3:GetInventoryConfiguration",
+                    "s3:GetObjectVersionTagging",
+                    "s3:ListBucketVersions",
+                    "s3:GetBucketLogging",
+                    "s3:ListBucket",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketPolicy",
+                    "s3:GetObjectVersionTorrent",
+                    "s3:GetObjectAcl",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetObjectVersionAcl",
+                    "s3:GetObjectTagging",
+                    "s3:GetMetricsConfiguration",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketPolicyStatus",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:GetBucketWebsite",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketNotification",
+                    "s3:GetReplicationConfiguration",
+                    "s3:ListMultipartUploadParts",
+                    "s3:GetObject",
+                    "s3:GetObjectTorrent",
+                    "s3:GetBucketCORS",
+                    "s3:GetAnalyticsConfiguration",
+                    "s3:GetObjectVersionForReplication",
+                    "s3:GetBucketLocation",
+                    "s3:GetObjectVersion"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::${Prefix}-s3-bucket-public",
+                    "arn:aws:s3:::${Prefix}-s3-bucket-public/*"
+                  ],
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:ListAllMyBuckets",
+                    "s3:ListJobs",
+                    "s3:HeadBucket"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-s3-bucket-public-readonly
+  IamGroupS3BucketPublicFull:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-s3-bucket-public-full
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:*",
+                  "Resource": [
+                    "arn:aws:s3:::${Prefix}-s3-bucket-public",
+                    "arn:aws:s3:::${Prefix}-s3-bucket-public/*"
+                  ],
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:ListAllMyBuckets",
+                    "s3:ListJobs",
+                    "s3:HeadBucket"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-s3-bucket-public-full
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Group - ECR - Push                                             |
+  #+---------------------------------------------------------------------------+
+  IamGroupEcrPush:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-ecr-push
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeImages",
+                    "ecr:DescribeRepositories",
+                    "ecr:ListImages",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetRepositoryPolicy",
+                    "ecr:CompleteLayerUpload",
+                    "ecr:UploadLayerPart",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:PutImage"
+                  ],
+                  "Resource": [
+                    "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${Prefix}-ecr/varnish",
+                    "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${Prefix}-ecr/laravel"
+                  ],
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-ecr-push
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Role - Task - Varnish                                          |
+  #+---------------------------------------------------------------------------+
+  IamRoleTaskExecutionVarnish:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        }
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeImages",
+                    "ecr:DescribeRepositories",
+                    "ecr:ListImages",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetRepositoryPolicy"
+                  ],
+                  "Resource": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${Prefix}-ecr/varnish"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-ecr-varnish-readonly
+      RoleName: !Sub ${Prefix}-iam-role-ecs-task-varnish
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Role - Task - Laravel                                          |
+  #+---------------------------------------------------------------------------+
+  IamRoleTaskExecutionLaravel:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        }
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeImages",
+                    "ecr:DescribeRepositories",
+                    "ecr:ListImages",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetRepositoryPolicy"
+                  ],
+                  "Resource": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${Prefix}-ecr/laravel"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-ecr-laravel-readonly
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Deny",
+                  "Action": [
+                    "sns:Publish"
+                  ],
+                  "Resource": "arn:aws:sns:*:*:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sns:Publish"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-sns-send-sms
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucketByTags",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketTagging",
+                    "s3:GetInventoryConfiguration",
+                    "s3:PutAnalyticsConfiguration",
+                    "s3:PutAccelerateConfiguration",
+                    "s3:GetObjectVersionTagging",
+                    "s3:ListBucketVersions",
+                    "s3:GetBucketLogging",
+                    "s3:RestoreObject",
+                    "s3:ListBucket",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketPolicy",
+                    "s3:ReplicateObject",
+                    "s3:GetObjectVersionTorrent",
+                    "s3:GetObjectAcl",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketObjectLockConfiguration",
+                    "s3:AbortMultipartUpload",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetObjectVersionAcl",
+                    "s3:GetObjectTagging",
+                    "s3:GetMetricsConfiguration",
+                    "s3:DeleteObject",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketPolicyStatus",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:GetObjectRetention",
+                    "s3:GetBucketWebsite",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketNotification",
+                    "s3:GetReplicationConfiguration",
+                    "s3:ListMultipartUploadParts",
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:PutBucketNotification",
+                    "s3:GetObjectTorrent",
+                    "s3:PutObjectRetention",
+                    "s3:PutBucketLogging",
+                    "s3:GetBucketCORS",
+                    "s3:GetAnalyticsConfiguration",
+                    "s3:GetObjectVersionForReplication",
+                    "s3:GetBucketLocation",
+                    "s3:ReplicateDelete",
+                    "s3:GetObjectVersion"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::${Prefix}-s3-bucket-private",
+                    "arn:aws:s3:::${Prefix}-s3-bucket-private/*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:HeadBucket"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-s3-private-full
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucketByTags",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketTagging",
+                    "s3:GetInventoryConfiguration",
+                    "s3:PutAnalyticsConfiguration",
+                    "s3:PutAccelerateConfiguration",
+                    "s3:GetObjectVersionTagging",
+                    "s3:ListBucketVersions",
+                    "s3:GetBucketLogging",
+                    "s3:RestoreObject",
+                    "s3:ListBucket",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketPolicy",
+                    "s3:ReplicateObject",
+                    "s3:GetObjectVersionTorrent",
+                    "s3:GetObjectAcl",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketObjectLockConfiguration",
+                    "s3:AbortMultipartUpload",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetObjectVersionAcl",
+                    "s3:GetObjectTagging",
+                    "s3:GetMetricsConfiguration",
+                    "s3:DeleteObject",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketPolicyStatus",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:GetObjectRetention",
+                    "s3:GetBucketWebsite",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketNotification",
+                    "s3:GetReplicationConfiguration",
+                    "s3:ListMultipartUploadParts",
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:PutBucketNotification",
+                    "s3:GetObjectTorrent",
+                    "s3:PutObjectRetention",
+                    "s3:PutBucketLogging",
+                    "s3:GetBucketCORS",
+                    "s3:GetAnalyticsConfiguration",
+                    "s3:GetObjectVersionForReplication",
+                    "s3:GetBucketLocation",
+                    "s3:ReplicateDelete",
+                    "s3:GetObjectVersion"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::${Prefix}-s3-bucket-public",
+                    "arn:aws:s3:::${Prefix}-s3-bucket-public/*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:HeadBucket"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-s3-public-full
+      RoleName: !Sub ${Prefix}-iam-role-ecs-task-laravel
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Group - ECS - Service - Update                                 |
+  #+---------------------------------------------------------------------------+
+  IamGroupEcsServiceUpdate:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-ecs-service-update
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:UpdateService",
+                    "ecs:UpdateServicePrimaryTaskSet"
+                  ],
+                  "Resource": [
+                    "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${Prefix}-ecs-cluster",
+                    "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${Prefix}-ecs-cluster/${Prefix}-ecs-service-varnish",
+                    "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${Prefix}-ecs-cluster/${Prefix}-ecs-service-laravel"
+                  ],
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-group-ecs-service-update
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Group - ECS - CloudWatch - Logs                                |
+  #+---------------------------------------------------------------------------+
+  IamGroupEcsCloudWatchLogsView:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-view
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:GetLogEvents",
+                  "Resource": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/${Prefix}-ecs-task-*:ecs/${Prefix}-ecs-task-container-*/*:*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:ListTagsLogGroup",
+                    "logs:DescribeLogGroups",
+                    "logs:DescribeLogStreams",
+                    "logs:DescribeSubscriptionFilters",
+                    "logs:StartQuery",
+                    "logs:GetLogEvents",
+                    "logs:DescribeMetricFilters",
+                    "logs:FilterLogEvents",
+                    "logs:GetLogGroupFields"
+                  ],
+                  "Resource": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/${Prefix}-ecs-task-*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:DescribeQueries",
+                    "logs:DescribeExportTasks",
+                    "logs:GetLogRecord",
+                    "logs:GetQueryResults",
+                    "logs:StopQuery",
+                    "logs:TestMetricFilter",
+                    "logs:DescribeResourcePolicies",
+                    "logs:GetLogDelivery",
+                    "logs:DescribeDestinations",
+                    "logs:ListLogDeliveries"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-view
+  IamGroupEcsCloudWatchLogsExport:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-export
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:CreateExportTask",
+                  "Resource": [
+                    "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/${Prefix}-ecs-task-varnish:log-stream:*",
+                    "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/${Prefix}-ecs-task-laravel:log-stream:*"
+                  ],
+                  "Condition": {
+                    "ForAnyValue:IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:DescribeExportTasks",
+                  "Resource": [
+                    "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group::log-stream:"
+                  ],
+                  "Condition": {
+                    "ForAnyValue:IpAddress": {
+                      "aws:SourceIp": [${AllowedCidrList}]
+                    }
+                  }
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-export
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - Role - ApplicationAutoScaling                                  |
+  #+---------------------------------------------------------------------------+
+  IamRoleApplicationAutoScaling:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "application-autoscaling.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        }
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "application-autoscaling:*",
+                    "ecs:DescribeServices",
+                    "ecs:UpdateService",
+                    "cloudwatch:DescribeAlarms",
+                    "cloudwatch:PutMetricAlarm"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-auto-scaling
+      RoleName: !Sub ${Prefix}-iam-role-auto-scaling
+
+#+-----------------------------------------------------------------------------+
+#|         Outputs                                                             |
+#+-----------------------------------------------------------------------------+
+Outputs:
+
+  IamGroupS3BucketPublicReadonlyArn:
+    Description: The ARN of the IamGroupS3BucketPublicReadonly
+    Value: !GetAtt IamGroupS3BucketPublicReadonly.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-public-readonly-arn
+  IamGroupS3BucketPublicReadonly:
+    Description: The Name of the IamGroupS3BucketPublicReadonly
+    Value: !Ref IamGroupS3BucketPublicReadonly
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-public-readonly
+
+  IamGroupS3BucketPublicFullArn:
+    Description: The ARN of the IamGroupS3BucketPublicFull
+    Value: !GetAtt IamGroupS3BucketPublicFull.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-public-full-arn
+  IamGroupS3BucketPublicFull:
+    Description: The Name of the IamGroupS3BucketPublicFull
+    Value: !Ref IamGroupS3BucketPublicFull
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-public-full
+
+  IamGroupS3BucketLogReadonlyArn:
+    Description: The ARN of the IamGroupS3BucketLogReadonly
+    Value: !GetAtt IamGroupS3BucketLogReadonly.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-log-readonly-arn
+  IamGroupS3BucketLogReadonly:
+    Description: The Name of the IamGroupS3BucketLogReadonly
+    Value: !Ref IamGroupS3BucketLogReadonly
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-log-readonly
+
+  IamGroupS3BucketLogUpdateArn:
+    Description: The ARN of the IamGroupS3BucketLogUpdate
+    Value: !GetAtt IamGroupS3BucketLogUpdate.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-log-update-arn
+  IamGroupS3BucketLogUpdate:
+    Description: The Name of the IamGroupS3BucketLogUpdate
+    Value: !Ref IamGroupS3BucketLogUpdate
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-log-update
+
+  IamGroupS3BucketPrivateReadonlyArn:
+    Description: The ARN of the IamGroupS3BucketPrivateReadonly
+    Value: !GetAtt IamGroupS3BucketPrivateReadonly.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-private-readonly-arn
+  IamGroupS3BucketPrivateReadonly:
+    Description: The Name of the IamGroupS3BucketPrivateReadonly
+    Value: !Ref IamGroupS3BucketPrivateReadonly
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-private-readonly
+
+  IamGroupS3BucketPrivateUpdateArn:
+    Description: The ARN of the IamGroupS3BucketPrivateUpdate
+    Value: !GetAtt IamGroupS3BucketPrivateUpdate.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-private-update-arn
+  IamGroupS3BucketPrivateUpdate:
+    Description: The Name of the IamGroupS3BucketPrivateUpdate
+    Value: !Ref IamGroupS3BucketPrivateUpdate
+    Export:
+      Name: !Sub ${Prefix}-iam-group-s3-bucket-private-update
+
+  IamGroupEcrPushArn:
+    Description: The ARN of the IamGroupEcrPush
+    Value: !GetAtt IamGroupEcrPush.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-ecr-push-arn
+  IamGroupEcrPush:
+    Description: The Name of the IamGroupEcrPush
+    Value: !Ref IamGroupEcrPush
+    Export:
+      Name: !Sub ${Prefix}-iam-group-ecr-push
+
+  IamRoleTaskExecutionVarnishArn:
+    Description: The ARN of the IamRoleTaskExecutionVarnish
+    Value: !GetAtt IamRoleTaskExecutionVarnish.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-role-ecs-task-varnish-arn
+  IamRoleTaskExecutionVarnish:
+    Description: The Name of the IamRoleTaskExecutionVarnish
+    Value: !Ref IamRoleTaskExecutionVarnish
+    Export:
+      Name: !Sub ${Prefix}-iam-role-ecs-task-varnish
+
+  IamRoleTaskExecutionLaravelArn:
+    Description: The ARN of the IamRoleTaskExecutionLaravel
+    Value: !GetAtt IamRoleTaskExecutionLaravel.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-role-ecs-task-laravel-arn
+  IamRoleTaskExecutionLaravel:
+    Description: The Name of the IamRoleTaskExecutionLaravel
+    Value: !Ref IamRoleTaskExecutionLaravel
+    Export:
+      Name: !Sub ${Prefix}-iam-role-ecs-task-laravel
+
+  IamRoleApplicationAutoScalingArn:
+    Description: The ARN of the IamRoleApplicationAutoScaling
+    Value: !GetAtt IamRoleApplicationAutoScaling.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-role-ecs-auto-scaling-arn
+  IamRoleApplicationAutoScaling:
+    Description: The Name of the IamRoleApplicationAutoScaling
+    Value: !Ref IamRoleApplicationAutoScaling
+    Export:
+      Name: !Sub ${Prefix}-iam-role-ecs-auto-scaling
+
+  IamGroupEcsServiceUpdateArn:
+    Description: The ARN of the IamGroupEcsServiceUpdate
+    Value: !GetAtt IamGroupEcsServiceUpdate.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-ecs-service-update-arn
+  IamGroupEcsServiceUpdate:
+    Description: The Name of the IamGroupEcsServiceUpdate
+    Value: !Ref IamGroupEcsServiceUpdate
+    Export:
+      Name: !Sub ${Prefix}-iam-group-ecs-service-update
+
+  IamGroupEcsCloudWatchLogsViewArn:
+    Description: The ARN of the IamGroupEcsCloudWatchLogsView
+    Value: !GetAtt IamGroupEcsCloudWatchLogsView.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-view-arn
+  IamGroupEcsCloudWatchLogsView:
+    Description: The Name of the IamGroupEcsCloudWatchLogsView
+    Value: !Ref IamGroupEcsCloudWatchLogsView
+    Export:
+      Name: !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs
+  IamGroupEcsCloudWatchLogsExportArn:
+    Description: The ARN of the IamGroupEcsCloudWatchLogsExport
+    Value: !GetAtt IamGroupEcsCloudWatchLogsExport.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-export-arn
+  IamGroupEcsCloudWatchLogsExport:
+    Description: The Name of the IamGroupEcsCloudWatchLogsExport
+    Value: !Ref IamGroupEcsCloudWatchLogsExport
+    Export:
+      Name: !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-export

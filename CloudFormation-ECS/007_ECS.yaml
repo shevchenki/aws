@@ -1,0 +1,840 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS CloudFormation Template
+
+#+-----------------------------------------------------------------------------+
+#|      Metadata                                                               |
+#+-----------------------------------------------------------------------------+
+Metadata:
+
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: General Parameters
+        Parameters:
+          - Prefix
+          - EnvironmentType
+      - Label:
+          default: Varnish Configurations
+        Parameters:
+          - TaskCpuVarnish
+          - TaskMemoryVarnish
+          - AutoScalingMaxCapacityVarnish
+          - AutoScalingDesiredCountVarnish
+          - AutoScalingMinCapacityVarnish
+          - CloudWatchAlarmCpuUtilizationThresholdVarnishScaleUp
+          - CloudWatchAlarmCpuUtilizationThresholdVarnishScaleDown
+      - Label:
+          default: Laravel Configurations
+        Parameters:
+          - TaskCpuLaravel
+          - TaskMemoryLaravel
+          - AutoScalingMaxCapacityLaravel
+          - AutoScalingDesiredCountLaravel
+          - AutoScalingMinCapacityLaravel
+          - CloudWatchAlarmCpuUtilizationThresholdLaravelScaleUp
+          - CloudWatchAlarmCpuUtilizationThresholdLaravelScaleDown
+
+#+-----------------------------------------------------------------------------+
+#|      Parameters                                                             |
+#+-----------------------------------------------------------------------------+
+Parameters:
+
+  Prefix:
+    Description: Prefix for all resources
+    Type: String
+    MaxLength: 13
+    Default: hyoban-prod
+
+  EnvironmentType:
+    Description: Environment type
+    Type: String
+    AllowedValues:
+      - Development
+      - Staging
+      - Production
+    Default: Production
+
+  TaskCpuVarnish:
+    Description: 'CPU size for task Varnish (see https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size). Use "256" if "EnvironmentType" is "Development"'
+    Type: Number
+    Default: 2048
+
+  TaskMemoryVarnish:
+    Description: 'Memory size for task Varnish (see https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size). Use "2048" if "EnvironmentType" is "Development"'
+    Type: Number
+    Default: 8192
+
+  AutoScalingMaxCapacityVarnish:
+    Description: 'Max Capacity for Varnish. Use "2" if "EnvironmentType" is "Development"'
+    Type: Number
+    MinValue: 1
+    MaxValue: 9
+    Default: 9
+
+  AutoScalingDesiredCountVarnish:
+    Description: 'Desired Count for Varnish. Use "2" if "EnvironmentType" is "Development"'
+    Type: Number
+    MinValue: 0
+    MaxValue: 9
+    Default: 0
+
+  AutoScalingMinCapacityVarnish:
+    Description: 'Min Capacity for Varnish. Use "2" if "EnvironmentType" is "Development"'
+    Type: Number
+    MinValue: 1
+    MaxValue: 9
+    Default: 2
+
+  CloudWatchAlarmCpuUtilizationThresholdVarnishScaleUp:
+    Description: Threshold of CPUUtilization for CloudWatch Alarm for Varnish ScaleUp
+    Type: Number
+    MinValue: 50
+    MaxValue: 100
+    Default: 80
+
+  CloudWatchAlarmCpuUtilizationThresholdVarnishScaleDown:
+    Description: Threshold of CPUUtilization for CloudWatch Alarm for Varnish ScaleDown
+    Type: Number
+    MinValue: 10
+    MaxValue: 50
+    Default: 30
+
+  TaskCpuLaravel:
+    Description: 'CPU size for task Laravel (see https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size). Use "512" if "EnvironmentType" is "Development"'
+    Type: Number
+    Default: 2048
+
+  TaskMemoryLaravel:
+    Description: 'Memory size for task Laravel (see https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size). Use "2048" if "EnvironmentType" is "Development"'
+    Type: Number
+    Default: 4096
+
+  AutoScalingMaxCapacityLaravel:
+    Description: 'Max Capacity for Laravel. Use "2" if "EnvironmentType" is "Development"'
+    Type: Number
+    MinValue: 1
+    MaxValue: 9
+    Default: 9
+
+  AutoScalingDesiredCountLaravel:
+    Description: 'Desired Count for Laravel. Use "2" if "EnvironmentType" is "Development"'
+    Type: Number
+    MinValue: 0
+    MaxValue: 9
+    Default: 0
+
+  AutoScalingMinCapacityLaravel:
+    Description: 'Min Capacity for Laravel. Use "2" if "EnvironmentType" is "Development"'
+    Type: Number
+    MinValue: 1
+    MaxValue: 9
+    Default: 2
+
+  CloudWatchAlarmCpuUtilizationThresholdLaravelScaleUp:
+    Description: Threshold of CPUUtilization for CloudWatch Alarm for Laravel ScaleUp
+    Type: Number
+    MinValue: 50
+    MaxValue: 100
+    Default: 80
+
+  CloudWatchAlarmCpuUtilizationThresholdLaravelScaleDown:
+    Description: Threshold of CPUUtilization for CloudWatch Alarm for Laravel ScaleDown
+    Type: Number
+    MinValue: 10
+    MaxValue: 50
+    Default: 30
+
+#+-----------------------------------------------------------------------------+
+#|      Conditions                                                             |
+#+-----------------------------------------------------------------------------+
+Conditions:
+
+  ResourcesForDevelopment:
+    !Equals [!Ref EnvironmentType, Development]
+  ResourcesForStaging:
+    Fn::Or:
+      - !Equals [!Ref EnvironmentType, Staging]
+      - !Equals [!Ref EnvironmentType, Production]
+  ResourcesForProduction:
+    !Equals [!Ref EnvironmentType, Production]
+  ResourcesNotForProduction:
+    !Not [!Equals [!Ref EnvironmentType, Production]]
+
+  UseAutoScalingDesiredCountVarnish:
+    Fn::Equals:
+      - !Ref AutoScalingDesiredCountVarnish
+      - 0
+
+  UseAutoScalingDesiredCountLaravel:
+    Fn::Equals:
+      - !Ref AutoScalingDesiredCountLaravel
+      - 0
+
+#+-----------------------------------------------------------------------------+
+#|      Resources                                                              |
+#+-----------------------------------------------------------------------------+
+Resources:
+
+  #+---------------------------------------------------------------------------+
+  #|      ECR - Repository - Varnish                                           |
+  #+---------------------------------------------------------------------------+
+  EcrRepositoryVarnish:
+    Type: AWS::ECR::Repository
+    Properties:
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "action": {
+                  "type": "expire"
+                },
+                "selection": {
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 1,
+                  "tagStatus": "untagged"
+                },
+                "description": "auto delete untagged images",
+                "rulePriority": 1
+              }
+            ]
+          }
+      RepositoryName: !Sub ${Prefix}-ecr/varnish
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-ecr-varnish
+
+  #+---------------------------------------------------------------------------+
+  #|      ECR - Repository - Laravel                                           |
+  #+---------------------------------------------------------------------------+
+  EcrRepositoryLaravel:
+    Type: AWS::ECR::Repository
+    Properties:
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "action": {
+                  "type": "expire"
+                },
+                "selection": {
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 1,
+                  "tagStatus": "untagged"
+                },
+                "description": "auto delete untagged images",
+                "rulePriority": 1
+              }
+            ]
+          }
+      RepositoryName: !Sub ${Prefix}-ecr/laravel
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-ecr-laravel
+
+  #+---------------------------------------------------------------------------+
+  #|      ECS - TaskDefinition - Varnish                                       |
+  #+---------------------------------------------------------------------------+
+  EcsTaskDefinitionVarnish:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Essential: true
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - curl -f http://localhost/ping || exit 1
+            Interval: 30
+            Retries: 2
+            StartPeriod: 60
+            Timeout: 2
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Prefix}-ecr/varnish:latest
+          Name: !Sub ${Prefix}-ecs-task-container-varnish
+          LogConfiguration:
+            LogDriver:  awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Sub /ecs/${Prefix}-ecs-task-varnish
+              awslogs-stream-prefix: ecs
+              awslogs-datetime-format: "%Y-%m-%dT%H:%M:%S"
+          MemoryReservation: 128
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+              Protocol: tcp
+      Cpu:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref TaskCpuVarnish
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref TaskCpuVarnish
+              - 256
+      ExecutionRoleArn:
+        Fn::ImportValue: !Sub ${Prefix}-iam-role-ecs-task-varnish-arn
+      Family: !Sub ${Prefix}-ecs-task-varnish
+      Memory:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref TaskMemoryVarnish
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref TaskMemoryVarnish
+              - 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn:
+        Fn::ImportValue: !Sub ${Prefix}-iam-role-ecs-task-varnish-arn
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-ecs-task-varnish
+
+  #+---------------------------------------------------------------------------+
+  #|      ECS - TaskDefinition - Laravel                                       |
+  #+---------------------------------------------------------------------------+
+  EcsTaskDefinitionLaravel:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Essential: true
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - curl -f http://localhost/api/actuator/health || exit 1
+            Interval: 15
+            Retries: 2
+            StartPeriod: 60
+            Timeout: 7
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Prefix}-ecr/laravel:latest
+          Name: !Sub ${Prefix}-ecs-task-container-laravel
+          LogConfiguration:
+            LogDriver:  awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Sub /ecs/${Prefix}-ecs-task-laravel
+              awslogs-stream-prefix: ecs
+              awslogs-create-group: true
+              awslogs-datetime-format: "%Y-%m-%d %H:%M:%S%L"
+          MemoryReservation: 512
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+              Protocol: tcp
+      Cpu:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref TaskCpuLaravel
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref TaskCpuLaravel
+              - 512
+      ExecutionRoleArn:
+        Fn::ImportValue: !Sub ${Prefix}-iam-role-ecs-task-laravel-arn
+      Family: !Sub ${Prefix}-ecs-task-laravel
+      Memory:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref TaskMemoryLaravel
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref TaskMemoryLaravel
+              - 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn:
+        Fn::ImportValue: !Sub ${Prefix}-iam-role-ecs-task-laravel-arn
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-ecs-task-laravel
+
+  #+---------------------------------------------------------------------------+
+  #|      CloudWatch- Logs - LogGroup                                          |
+  #+---------------------------------------------------------------------------+
+  CloudWatchLogsLogGroupEcsTaskVarnish:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${Prefix}-ecs-task-varnish
+      RetentionInDays: 30
+  CloudWatchLogsLogGroupEcsTaskLaravel:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${Prefix}-ecs-task-laravel
+      RetentionInDays: 30
+
+  #+---------------------------------------------------------------------------+
+  #|      ECS - Cluster                                                        |
+  #+---------------------------------------------------------------------------+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${Prefix}-ecs-cluster
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-ecs-cluster
+
+  #+---------------------------------------------------------------------------+
+  #|      ECS - ServiceDiscovery - PrivateDnsNamespace                         |
+  #+---------------------------------------------------------------------------+
+  EcsServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Description: !Sub ${Prefix}-ecs-service-discovery-namespace
+      Name: !Sub ${Prefix}-ecs-service-discovery
+      Vpc:
+        Fn::ImportValue: !Sub ${Prefix}-vpc
+
+  #+---------------------------------------------------------------------------+
+  #|      ECS - ServiceDiscovery - Varnish                                     |
+  #+---------------------------------------------------------------------------+
+  EcsServiceDiscoveryServiceVarnish:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Description: !Sub ${Prefix}-ecs-service-discovery-service-varnish
+      DnsConfig:
+        DnsRecords:
+          - TTL: 30
+            Type: A
+        NamespaceId: !Ref EcsServiceDiscoveryNamespace
+        RoutingPolicy: MULTIVALUE
+      # HealthCheckConfig:
+      #   FailureThreshold: 1
+      #   ResourcePath: /ping
+      #   Type: HTTP
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+      Name: varnish
+      NamespaceId: !Ref EcsServiceDiscoveryNamespace
+
+  #+---------------------------------------------------------------------------+
+  #|      ECS - ServiceDiscovery - Laravel                                     |
+  #+---------------------------------------------------------------------------+
+  EcsServiceDiscoveryServiceLaravel:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Description: !Sub ${Prefix}-ecs-service-discovery-service-laravel
+      DnsConfig:
+        DnsRecords:
+          - TTL: 60
+            Type: A
+        NamespaceId: !Ref EcsServiceDiscoveryNamespace
+        RoutingPolicy: MULTIVALUE
+      # HealthCheckConfig:
+      #   FailureThreshold: 1
+      #   ResourcePath: /ping
+      #   Type: HTTP
+      HealthCheckCustomConfig:
+        FailureThreshold: 2
+      Name: laravel
+      NamespaceId: !Ref EcsServiceDiscoveryNamespace
+
+  #+---------------------------------------------------------------------------+
+  #|      ECS - Service - Varnish                                              |
+  #+---------------------------------------------------------------------------+
+  EcsServiceVarnish:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - EcsTaskDefinitionVarnish
+      #- CloudWatchAlarmAutoScalingVarnishScaleUp
+      #- CloudWatchAlarmAutoScalingVarnishScaleDown
+    Properties:
+      Cluster: !Ref EcsCluster
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref AutoScalingDesiredCountVarnish
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref AutoScalingDesiredCountVarnish
+              - Fn::If:
+                  - UseAutoScalingDesiredCountVarnish
+                  - !Ref AutoScalingDesiredCountVarnish
+                  - 2
+      EnableECSManagedTags: true
+      HealthCheckGracePeriodSeconds: 60
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: !Sub ${Prefix}-ecs-task-container-varnish
+          ContainerPort: 80
+          # LoadBalancerName: !Sub ${Prefix}-load-balancer
+          TargetGroupArn:
+            Fn::ImportValue: !Sub ${Prefix}-alb-tg-varnish
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Sub ${Prefix}-sg-varnish
+          Subnets:
+            Fn::If:
+              - ResourcesForProduction
+              - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-varnish-a
+                - Fn::ImportValue: !Sub ${Prefix}-subnet-private-varnish-b
+                - Fn::ImportValue: !Sub ${Prefix}-subnet-private-varnish-c
+              - Fn::If:
+                  - ResourcesForStaging
+                  - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-varnish-a
+                    - Fn::ImportValue: !Sub ${Prefix}-subnet-private-varnish-b
+                  - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-varnish-a
+      PlatformVersion: LATEST
+      SchedulingStrategy: REPLICA
+      # custom-named resource
+      ServiceName: !Sub ${Prefix}-ecs-service-varnish
+      ServiceRegistries:
+        - ContainerName: !Sub ${Prefix}-ecs-task-container-varnish
+          # ContainerPort: 80
+          # Port: 80
+          RegistryArn: !GetAtt EcsServiceDiscoveryServiceVarnish.Arn
+      TaskDefinition: !Ref EcsTaskDefinitionVarnish
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-ecs-service-varnish
+
+  #+---------------------------------------------------------------------------+
+  #|      ECS - Service - Laravel                                              |
+  #+---------------------------------------------------------------------------+
+  EcsServiceLaravel:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - EcsTaskDefinitionLaravel
+      #- CloudWatchAlarmAutoScalingLaravelScaleUp
+      #- CloudWatchAlarmAutoScalingLaravelScaleDown
+    Properties:
+      Cluster: !Ref EcsCluster
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref AutoScalingDesiredCountLaravel
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref AutoScalingDesiredCountLaravel
+              - Fn::If:
+                  - UseAutoScalingDesiredCountLaravel
+                  - !Ref AutoScalingDesiredCountLaravel
+                  - 2
+      EnableECSManagedTags: true
+      HealthCheckGracePeriodSeconds: 120
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: !Sub ${Prefix}-ecs-task-container-laravel
+          ContainerPort: 80
+          # LoadBalancerName: !Sub ${Prefix}-load-balancer
+          TargetGroupArn:
+            Fn::ImportValue: !Sub ${Prefix}-alb-tg-laravel
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Sub ${Prefix}-sg-laravel
+          Subnets:
+            Fn::If:
+              - ResourcesForProduction
+              - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-laravel-a
+                - Fn::ImportValue: !Sub ${Prefix}-subnet-private-laravel-b
+                - Fn::ImportValue: !Sub ${Prefix}-subnet-private-laravel-c
+              - Fn::If:
+                  - ResourcesForStaging
+                  - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-laravel-a
+                    - Fn::ImportValue: !Sub ${Prefix}-subnet-private-laravel-b
+                  - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-laravel-a
+      PlatformVersion: LATEST
+      SchedulingStrategy: REPLICA
+      # custom-named resource
+      ServiceName: !Sub ${Prefix}-ecs-service-laravel
+      ServiceRegistries:
+        - ContainerName: !Sub ${Prefix}-ecs-task-container-laravel
+          # ContainerPort: 80
+          # Port: 80
+          RegistryArn: !GetAtt EcsServiceDiscoveryServiceLaravel.Arn
+      TaskDefinition: !Ref EcsTaskDefinitionLaravel
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-ecs-service-laravel
+
+  #+---------------------------------------------------------------------------+
+  #|      ApplicationAutoScaling - ScalableTarget - Varnish                    |
+  #+---------------------------------------------------------------------------+
+  ApplicationAutoScalingScalableTargetVarnish:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn:
+      - EcsServiceVarnish
+    Properties:
+      MaxCapacity:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref AutoScalingMaxCapacityVarnish
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref AutoScalingMaxCapacityVarnish
+              - 2
+      MinCapacity:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref AutoScalingMinCapacityVarnish
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref AutoScalingMinCapacityVarnish
+              - 2
+      ResourceId:
+        Fn::Join:
+          - '/'
+          - - service
+            - !Ref EcsCluster
+            - !GetAtt EcsServiceVarnish.Name
+      RoleARN:
+        Fn::ImportValue: !Sub ${Prefix}-iam-role-ecs-auto-scaling-arn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  #+---------------------------------------------------------------------------+
+  #|      ApplicationAutoScaling - ScalableTarget - Laravel                    |
+  #+---------------------------------------------------------------------------+
+  ApplicationAutoScalingScalableTargetLaravel:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn:
+      - EcsServiceLaravel
+    Properties:
+      MaxCapacity:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref AutoScalingMaxCapacityLaravel
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref AutoScalingMaxCapacityLaravel
+              - 2
+      MinCapacity:
+        Fn::If:
+          - ResourcesForProduction
+          - !Ref AutoScalingMinCapacityLaravel
+          - Fn::If:
+              - ResourcesForStaging
+              - !Ref AutoScalingMinCapacityLaravel
+              - 2
+      ResourceId:
+        Fn::Join:
+          - '/'
+          - - service
+            - !Ref EcsCluster
+            - !GetAtt EcsServiceLaravel.Name
+      RoleARN:
+        Fn::ImportValue: !Sub ${Prefix}-iam-role-ecs-auto-scaling-arn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  #+---------------------------------------------------------------------------+
+  #|      ApplicationAutoScaling - ScalingPolicy - Varnish                     |
+  #+---------------------------------------------------------------------------+
+  ApplicationAutoScalingScalingPolicyVarnishScaleUp:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${Prefix}-auto-scaling-policy-varnish-scale-up
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ApplicationAutoScalingScalableTargetVarnish
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 300
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            MetricIntervalUpperBound: 20
+            ScalingAdjustment: 1
+          - MetricIntervalLowerBound: 20
+            ScalingAdjustment: 2
+  ApplicationAutoScalingScalingPolicyVarnishScaleDown:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${Prefix}-auto-scaling-policy-varnish-scale-down
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ApplicationAutoScalingScalableTargetVarnish
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 600
+        MetricAggregationType: Maximum
+        StepAdjustments:
+          - MetricIntervalUpperBound: 0
+            ScalingAdjustment: -1
+
+  #+---------------------------------------------------------------------------+
+  #|      ApplicationAutoScaling - ScalingPolicy - Laravel                     |
+  #+---------------------------------------------------------------------------+
+  ApplicationAutoScalingScalingPolicyLaravelScaleUp:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${Prefix}-auto-scaling-policy-laravel-scale-up
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ApplicationAutoScalingScalableTargetLaravel
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 300
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            MetricIntervalUpperBound: 20
+            ScalingAdjustment: 1
+          - MetricIntervalLowerBound: 20
+            ScalingAdjustment: 2
+  ApplicationAutoScalingScalingPolicyLaravelScaleDown:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${Prefix}-auto-scaling-policy-laravel-scale-down
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ApplicationAutoScalingScalableTargetLaravel
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 600
+        MetricAggregationType: Maximum
+        StepAdjustments:
+          - MetricIntervalUpperBound: 0
+            ScalingAdjustment: -1
+
+  #+---------------------------------------------------------------------------+
+  #|      CloudWatch - Alarm - AutoScaling - Varnish - ScaleUp                 |
+  #+---------------------------------------------------------------------------+
+  CloudWatchAlarmAutoScalingVarnishScaleUp:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref ApplicationAutoScalingScalingPolicyVarnishScaleUp
+      AlarmDescription: !Sub ${Prefix}-cloudwatch-alarm-auto-scaling-varnish-scale-up
+      AlarmName: !Sub ${Prefix}-cloudwatch-alarm-auto-scaling-varnish-scale-up
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsCluster
+        - Name: ServiceName
+          Value: !GetAtt EcsServiceVarnish.Name
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Period: 300
+      Statistic: Average
+      Threshold: !Ref CloudWatchAlarmCpuUtilizationThresholdVarnishScaleUp
+      TreatMissingData: breaching
+      Unit: Percent
+
+  #+---------------------------------------------------------------------------+
+  #|      CloudWatch - Alarm - AutoScaling - Varnish - ScaleDown               |
+  #+---------------------------------------------------------------------------+
+  CloudWatchAlarmAutoScalingVarnishScaleDown:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref ApplicationAutoScalingScalingPolicyVarnishScaleDown
+      AlarmDescription: !Sub ${Prefix}-cloudwatch-alarm-auto-scaling-varnish-scale-down
+      AlarmName: !Sub ${Prefix}-cloudwatch-alarm-auto-scaling-varnish-scale-down
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsCluster
+        - Name: ServiceName
+          Value: !GetAtt EcsServiceVarnish.Name
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Period: 300
+      Statistic: Maximum
+      Threshold: !Ref CloudWatchAlarmCpuUtilizationThresholdVarnishScaleDown
+      TreatMissingData: notBreaching
+      Unit: Percent
+
+  #+---------------------------------------------------------------------------+
+  #|      CloudWatch - Alarm - AutoScaling - Laravel - ScaleUp                 |
+  #+---------------------------------------------------------------------------+
+  CloudWatchAlarmAutoScalingLaravelScaleUp:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref ApplicationAutoScalingScalingPolicyLaravelScaleUp
+      AlarmDescription: !Sub ${Prefix}-cloudwatch-alarm-auto-scaling-laravel-scale-up
+      AlarmName: !Sub ${Prefix}-cloudwatch-alarm-auto-scaling-laravel-scale-up
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsCluster
+        - Name: ServiceName
+          Value: !GetAtt EcsServiceLaravel.Name
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Period: 300
+      Statistic: Average
+      Threshold: !Ref CloudWatchAlarmCpuUtilizationThresholdLaravelScaleUp
+      TreatMissingData: breaching
+      Unit: Percent
+
+  #+---------------------------------------------------------------------------+
+  #|      CloudWatch - Alarm - AutoScaling - Laravel - ScaleDown               |
+  #+---------------------------------------------------------------------------+
+  CloudWatchAlarmAutoScalingLaravelScaleDown:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref ApplicationAutoScalingScalingPolicyLaravelScaleDown
+      AlarmDescription: !Sub ${Prefix}-cloudwatch-alarm-auto-scaling-laravel-scale-down
+      AlarmName: !Sub ${Prefix}-cloudwatch-alarm-auto-scaling-laravel-scale-down
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsCluster
+        - Name: ServiceName
+          Value: !GetAtt EcsServiceLaravel.Name
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Period: 300
+      Statistic: Maximum
+      Threshold: !Ref CloudWatchAlarmCpuUtilizationThresholdLaravelScaleDown
+      TreatMissingData: notBreaching
+      Unit: Percent
+
+#+-----------------------------------------------------------------------------+
+#|         Outputs                                                             |
+#+-----------------------------------------------------------------------------+
+Outputs:
+
+  EcrRepositoryVarnishArn:
+    Description: The ARN of the EcrRepositoryVarnish
+    Value: !GetAtt EcrRepositoryVarnish.Arn
+    Export:
+      Name: !Sub ${Prefix}-ecr-varnish-arn
+  EcrRepositoryVarnish:
+    Description: The Name of the EcrRepositoryVarnish
+    Value: !Ref EcrRepositoryVarnish
+    Export:
+      Name: !Sub ${Prefix}-ecr-varnish
+
+  EcrRepositoryLaravelArn:
+    Description: The ARN of the EcrRepositoryLaravel
+    Value: !GetAtt EcrRepositoryLaravel.Arn
+    Export:
+      Name: !Sub ${Prefix}-ecr-laravel-arn
+  EcrRepositoryLaravel:
+    Description: The Name of the EcrRepositoryLaravel
+    Value: !Ref EcrRepositoryLaravel
+    Export:
+      Name: !Sub ${Prefix}-ecr-laravel
+
+  CloudWatchLogsConsoleLinkVarnish:
+    Description: The URL of CloudWatch Logs Console for Varnish
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#logStream:group=/ecs/${Prefix}-ecs-task-varnish
+    Export:
+      Name: !Sub ${Prefix}-cloudwatch-logs-console-link-varnish
+
+  CloudWatchLogsConsoleLinkLaravel:
+    Description: The URL of CloudWatch Logs Console for Laravel
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#logStream:group=/ecs/${Prefix}-ecs-task-laravel
+    Export:
+      Name: !Sub ${Prefix}-cloudwatch-logs-console-link-laravel

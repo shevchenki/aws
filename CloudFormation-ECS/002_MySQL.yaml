@@ -1,0 +1,299 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: MySQL CloudFormation Template
+
+#+-----------------------------------------------------------------------------+
+#|      Metadata                                                               |
+#+-----------------------------------------------------------------------------+
+Metadata:
+
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: General Parameters
+        Parameters:
+          - Prefix
+          - EnvironmentType
+      - Label:
+          default: MySQL configurations
+        Parameters:
+          - MySqlDeletionProtection
+          - MySqlMaxCapacity
+          - MySqlMinCapacity
+      - Label:
+          default: MySQL credentials
+        Parameters:
+          - MySqlName
+          - MySqlUsername
+          - MySqlPassword
+
+#+-----------------------------------------------------------------------------+
+#|      Parameters                                                             |
+#+-----------------------------------------------------------------------------+
+Parameters:
+
+  Prefix:
+    Description: Prefix for all resources
+    Type: String
+    MaxLength: 13
+    Default: hyoban-prod
+
+  EnvironmentType:
+    Description: Environment type
+    Type: String
+    AllowedValues:
+      - Development
+      - Staging
+      - Production
+    Default: Production
+
+  MySqlDeletionProtection:
+    Description: MySQL Deletion Protection
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: true
+
+  MySqlMaxCapacity:
+    Description: 'MySQL MaxCapacity for Aurora serveless. Recommend value for PROD/STG/DEV are 64/4/4. Use "4" if "EnvironmentType" is "Development"'
+    Type: Number
+    AllowedValues:
+      - 1
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+      - 128
+      - 256
+    Default: 64
+
+  MySqlMinCapacity:
+    Description: 'MySQL MinCapacity for Aurora serveless. Recommend value for PROD/STG/DEV are 4/1/1. Use "1" if "EnvironmentType" is "Development"'
+    Type: Number
+    AllowedValues:
+      - 1
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+      - 128
+      - 256
+    Default: 4
+
+  MySqlName:
+    Description: MySQL Name
+    Type: String
+    Default: hyoban
+
+  MySqlUsername:
+    Description: MySQL Adminstrator Account
+    Type: String
+    Default: hyoban_master
+  MySqlPassword:
+    Description: MySQL Adminstrator Password
+    Type: String
+    NoEcho: true
+    MinLength: 8
+
+#+-----------------------------------------------------------------------------+
+#|      Conditions                                                             |
+#+-----------------------------------------------------------------------------+
+Conditions:
+
+  ResourcesForDevelopment:
+    !Equals [!Ref EnvironmentType, Development]
+  ResourcesForStaging:
+    Fn::Or:
+      - !Equals [!Ref EnvironmentType, Staging]
+      - !Equals [!Ref EnvironmentType, Production]
+  ResourcesForProduction:
+    !Equals [!Ref EnvironmentType, Production]
+  ResourcesNotForProduction:
+    !Not [!Equals [!Ref EnvironmentType, Production]]
+
+#+-----------------------------------------------------------------------------+
+#|      Resources                                                              |
+#+-----------------------------------------------------------------------------+
+Resources:
+
+  #+---------------------------------------------------------------------------+
+  #|      MySQL - SubnetGroup                                                  |
+  #+---------------------------------------------------------------------------+
+  MySqlSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub ${Prefix}-mysql-subnet-group
+      DBSubnetGroupName: !Sub ${Prefix}-mysql-subnet-group
+      SubnetIds:
+        Fn::If:
+          - ResourcesForProduction
+          - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-mysql-a
+            - Fn::ImportValue: !Sub ${Prefix}-subnet-private-mysql-b
+          - Fn::If:
+              - ResourcesForStaging
+              - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-mysql-a
+                - Fn::ImportValue: !Sub ${Prefix}-subnet-private-mysql-b
+              - - Fn::ImportValue: !Sub ${Prefix}-subnet-private-mysql-a
+                - Fn::ImportValue: !Sub ${Prefix}-subnet-private-mysql-b
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-mysql-subnet-group
+
+  #+---------------------------------------------------------------------------+
+  #|      MySQL - ClusterParameterGroup                                        |
+  #+---------------------------------------------------------------------------+
+  MySqlClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      Description: !Sub ${Prefix}-mysql-cluster-parameter-group
+      Family: aurora5.6
+      Parameters:
+        'character_set_server': utf8
+        # 'collation_server':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'general_log': 1
+        # . This setting was formerly only in the DB instance parameter group.
+        'innodb_file_format': Barracuda
+        # 'innodb_file_per_table':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'innodb_large_prefix':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'innodb_lock_wait_timeout':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'innodb_monitor_disable':
+        # . This setting was formerly only in the DB instance parameter group.
+        #'innodb_monitor_enable':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'innodb_monitor_reset':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'innodb_monitor_reset_all':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'innodb_print_all_deadlocks':
+        # 'lc_time_names':
+        # . This setting was formerly only in the DB instance parameter group. This setting has a default value of FILE. You can't change this value.
+        # 'log_output':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'log_queries_not_using_indexes':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'log_warnings':
+        # . This setting was formerly only in the DB instance parameter group.
+        'long_query_time': 2
+        # 'lower_case_table_names':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'net_read_timeout':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'net_retry_count':
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'net_write_timeout':
+        # 'server_audit_logging':
+        # 'server_audit_events':
+        # 'server_audit_excl_users':
+        # 'server_audit_incl_users':
+        # . This setting was formerly only in the DB instance parameter group.
+        'slow_query_log': 1
+        # . This setting was formerly only in the DB instance parameter group.
+        # 'sql_mode':
+        # 'time_zone':
+        # . This setting was formerly only in the DB instance parameter group.
+        'tx_isolation': READ-COMMITTED
+        ##  'character_set_client': utf8
+        ##  'innodb_ft_min_token_size': 1
+        ##  'query_cache_size': 67108864
+        ##  'character_set_database': utf8
+        ##  'character_set_results': utf8
+        ##  'key_buffer_size': 268435456
+        ##  'character_set_connection': utf8
+        ##  'innodb_ft_enable_stopword': 0
+        ##  'thread_cache_size': 400
+        ##  'skip-character-set-client-handshake': 1
+        ##  'sort_buffer_size': 4194304
+        ##  'ft_min_word_len': 1
+        ##  'read_buffer_size': 1048576
+        ##  'query_cache_type': 1
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-mysql-cluster-parameter-group
+
+  #+---------------------------------------------------------------------------+
+  #|      MySQL - Cluster                                                      |
+  #+---------------------------------------------------------------------------+
+  MySqlCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      AvailabilityZones:
+        Fn::If:
+          - ResourcesForProduction
+          - - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+            - Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+          - Fn::If:
+              - ResourcesForStaging
+              - - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+                - Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+              - - Fn::ImportValue: !Sub ${Prefix}-availability-zone-a
+                - Fn::ImportValue: !Sub ${Prefix}-availability-zone-b
+      # BacktrackWindow: 3600
+      BackupRetentionPeriod: 35
+      DatabaseName: !Ref MySqlName
+      # custom-named resource
+      DBClusterIdentifier: !Sub ${Prefix}-mysql-cluster
+      DBClusterParameterGroupName: !Ref MySqlClusterParameterGroup
+      DBSubnetGroupName: !Ref MySqlSubnetGroup
+      # DeletionProtection: true
+      DeletionProtection: !Ref MySqlDeletionProtection
+      # TODO manually enable Cloudwatch Logs Exports
+      # EnableCloudwatchLogsExports:
+      #   - error_log
+      #   - slow_log
+      #   - general_log
+      EnableHttpEndpoint: false
+      Engine: aurora
+      EngineMode: serverless
+      EngineVersion: 5.6.10a
+      MasterUsername: !Ref MySqlUsername
+      MasterUserPassword: !Ref MySqlPassword
+      Port: 3306
+      PreferredBackupWindow: 16:00-17:00
+      PreferredMaintenanceWindow: Sun:17:00-Sun:18:00
+      ScalingConfiguration:
+        AutoPause: true
+        MaxCapacity:
+          Fn::If:
+            - ResourcesForProduction
+            - !Ref MySqlMaxCapacity
+            - Fn::If:
+                - ResourcesForStaging
+                - !Ref MySqlMaxCapacity
+                - 4
+        MinCapacity:
+          Fn::If:
+            - ResourcesForProduction
+            - !Ref MySqlMinCapacity
+            - Fn::If:
+                - ResourcesForStaging
+                - !Ref MySqlMinCapacity
+                - 1
+        SecondsUntilAutoPause: 300
+      StorageEncrypted: true
+      VpcSecurityGroupIds:
+        - Fn::ImportValue: !Sub ${Prefix}-sg-mysql
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-mysql-cluster
+
+#+-----------------------------------------------------------------------------+
+#|         Outputs                                                             |
+#+-----------------------------------------------------------------------------+
+Outputs:
+
+  #+---------------------------------------------------------------------------+
+  #|      MySQL - Endpoint                                                     |
+  #+---------------------------------------------------------------------------+
+  MySqlEndpoint:
+    Description: MySQL Endpoint
+    Value: !GetAtt MySqlCluster.Endpoint.Address
+    Export:
+      Name: !Sub ${Prefix}-mysql-endpoint

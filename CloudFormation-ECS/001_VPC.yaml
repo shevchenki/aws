@@ -1,0 +1,1633 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC CloudFormation Template
+
+#+-----------------------------------------------------------------------------+
+#|      Metadata                                                               |
+#+-----------------------------------------------------------------------------+
+Metadata:
+
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: General Parameters
+        Parameters:
+          - Prefix
+          - EnvironmentType
+      - Label:
+          default: LoadBalancer Configurations
+        Parameters:
+          - UseHttp
+          - UseHttps
+          - CertificateArn
+          - LoadBalancerDeletionProtection
+      - Label:
+          default: Bastion EC2
+        Parameters:
+          - BastionEc2InstanceType
+          - BastionEc2KeyPairName
+          - BastionEc2AmiId
+      - Label:
+          default: Availability Zones
+        Parameters:
+          - AvailabilityZoneA
+          - AvailabilityZoneB
+      - Label:
+          default: CIDR for VPC and Public Subnets
+        Parameters:
+          - CidrVpc
+          - CidrSubnetPublicA
+          - CidrSubnetPublicB
+      - Label:
+          default: CIDR for Subnets for Varnish
+        Parameters:
+          - CidrSubnetPrivateVarnishA
+          - CidrSubnetPrivateVarnishB
+      - Label:
+          default: CIDR for Subnets for Laravel
+        Parameters:
+          - CidrSubnetPrivateLaravelA
+          - CidrSubnetPrivateLaravelB
+      - Label:
+          default: CIDR for Subnets for MySQL
+        Parameters:
+          - CidrSubnetPrivateMySqlA
+          - CidrSubnetPrivateMySqlB
+      - Label:
+          default: CIDR for Subnets for ElasticCache Redis
+        Parameters:
+          - CidrSubnetPrivateRedisA
+          - CidrSubnetPrivateRedisB
+
+#+-----------------------------------------------------------------------------+
+#|      Parameters                                                             |
+#+-----------------------------------------------------------------------------+
+Parameters:
+
+  Prefix:
+    Description: Prefix for all resources
+    Type: String
+    MaxLength: 13
+    Default: hyoban-prod
+
+  EnvironmentType:
+    Description: Environment type
+    Type: String
+    AllowedValues:
+      - Development
+      - Staging
+      - Production
+    Default: Production
+
+  UseHttp:
+    Description: Use HTTP (no TLS/SSL)
+    Type: String
+    AllowedValues:
+      - yes
+      - no
+    Default: no
+
+  UseHttps:
+    Description: Use HTTPS (TLS/SSL)
+    Type: String
+    AllowedValues:
+      - yes
+      - no
+    Default: yes
+
+  CertificateArn:
+    Description: ARN of Certificate for HTTPS
+    Type: String
+
+  LoadBalancerDeletionProtection:
+    Description: LoadBalancer Deletion Protection
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: true
+
+  BastionEc2InstanceType:
+    Description: EC2 InstanceType for Bastion
+    Type: String
+    AllowedValues:
+      - t3a.nano
+      - t3.nano
+      - t2.nano
+      - t3a.micro
+      - t3.micro
+      - t2.micro
+      - t3a.small
+      - t3.small
+      - t2.small
+      - t3a.medium
+      - t3.medium
+      - t2.medium
+      - t3a.large
+      - t3.large
+      - t2.large
+      - t3a.xlarge
+      - t3.xlarge
+      - t2.xlarge
+    Default: t3a.micro
+
+  BastionEc2KeyPairName:
+    Description: 'KeyPair Name for Bastion EC2. Key pair name must contain "bastion".'
+    Type: AWS::EC2::KeyPair::KeyName
+    AllowedPattern: ".*[Bb]astion.*"
+    ConstraintDescription: 'Key pair name must contain "bastion"'
+
+  BastionEc2AmiId:
+    Description: 'Amazon Machine Image (AMI) ID for Bastion EC2 (to skip bastion creating, leave it empty). See https://ap-northeast-1.console.aws.amazon.com/ec2/v2/home?#Images:visibility=public-images;search=%5Eamzn2-ami-hvm-2%5C%5C.0%5C%5C.%5B0-9%5D+-x86_64-gp2$;sort=desc:name'
+    # Type: AWS::EC2::Image::Id
+    Type: String
+    Default: ""
+
+  AvailabilityZoneA:
+    Description: Availability Zone A
+    Type: AWS::EC2::AvailabilityZone::Name
+  AvailabilityZoneB:
+    Description: Availability Zone B
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  CidrVpc:
+    Description: IP range (CIDR notation) for VPC
+    Type: String
+    Default: 10.2.0.0/16
+
+  CidrSubnetPublicA:
+    Description: IP range (CIDR notation) for the public subnet A in the Availability Zone A
+    Type: String
+    Default: 10.2.1.0/26
+  CidrSubnetPublicB:
+    Description: IP range (CIDR notation) for the public subnet B in the Availability Zone B
+    Type: String
+    Default: 10.2.1.64/26
+
+  CidrSubnetPrivateVarnishA:
+    Description: IP range (CIDR notation) for the Varnish subnet A in the Availability Zone A
+    Type: String
+    Default: 10.2.2.0/26
+  CidrSubnetPrivateVarnishB:
+    Description: IP range (CIDR notation) for the Varnish subnet B in the Availability Zone B
+    Type: String
+    Default: 10.2.2.64/26
+
+  CidrSubnetPrivateLaravelA:
+    Description: IP range (CIDR notation) for the Laravel subnet A in the Availability Zone A
+    Type: String
+    Default: 10.2.3.0/26
+  CidrSubnetPrivateLaravelB:
+    Description: IP range (CIDR notation) for the Laravel subnet B in the Availability Zone B
+    Type: String
+    Default: 10.2.3.64/26
+
+  CidrSubnetPrivateMySqlA:
+    Description: IP range (CIDR notation) for the MySQL subnet A in the Availability Zone A
+    Type: String
+    Default: 10.2.4.0/26
+  CidrSubnetPrivateMySqlB:
+    Description: IP range (CIDR notation) for the MySQL subnet B in the Availability Zone B
+    Type: String
+    Default: 10.2.4.64/26
+
+  CidrSubnetPrivateRedisA:
+    Description: IP range (CIDR notation) for the Redis subnet A in the Availability Zone A
+    Type: String
+    Default: 10.2.5.0/26
+  CidrSubnetPrivateRedisB:
+    Description: IP range (CIDR notation) for the Redis subnet B in the Availability Zone B
+    Type: String
+    Default: 10.2.5.64/26
+
+#+-----------------------------------------------------------------------------+
+#|      Mappings                                                               |
+#+-----------------------------------------------------------------------------+
+Mappings:
+  RegionMap:
+    eu-north-1:
+      "AMI": "ami-3f36be41"
+    ap-south-1:
+      "AMI": "ami-0d2692b6acea72ee6"
+    eu-west-3:
+      "AMI": "ami-0adcddd3324248c4c"
+    eu-west-2:
+      "AMI": "ami-0d8e27447ec2c8410"
+    eu-west-1:
+      "AMI": "ami-0bbc25e23a7640b9b"
+    ap-northeast-2:
+      "AMI": "ami-095ca789e0549777d"
+    ap-northeast-1:
+      "AMI": "ami-0c3fd0f5d33134a76"
+    sa-east-1:
+      "AMI": "ami-058943e7d9b9cabfb"
+    ca-central-1:
+      "AMI": "ami-0d4ae09ec9361d8ac"
+    ap-southeast-1:
+      "AMI": "ami-01f7527546b557442"
+    ap-southeast-2:
+      "AMI": "ami-0dc96254d5535925f"
+    eu-central-1:
+      "AMI": "ami-0cc293023f983ed53"
+    us-east-1:
+      "AMI": "ami-0b898040803850657"
+    us-east-2:
+      "AMI": "ami-0d8f6eb4f641ef691"
+    us-west-1:
+      "AMI": "ami-056ee704806822732"
+    us-west-2:
+      "AMI": "ami-082b5a644766e0e6f"
+
+#+-----------------------------------------------------------------------------+
+#|      Conditions                                                             |
+#+-----------------------------------------------------------------------------+
+Conditions:
+
+  ResourcesForDevelopment:
+    !Equals [!Ref EnvironmentType, Development]
+  ResourcesForStaging:
+    Fn::Or:
+      - !Equals [!Ref EnvironmentType, Staging]
+      - !Equals [!Ref EnvironmentType, Production]
+  ResourcesForProduction:
+    !Equals [!Ref EnvironmentType, Production]
+  ResourcesNotForProduction:
+    !Not [!Equals [!Ref EnvironmentType, Production]]
+
+  ResourcesForHttps:
+    Fn::Equals:
+      - !Ref UseHttps
+      - yes
+  ResourcesForHttp:
+    Fn::Equals:
+      - !Ref UseHttp
+      - yes
+
+  BastionEc2AmiIdNotEmpty:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref BastionEc2AmiId
+          - ""
+
+#+-----------------------------------------------------------------------------+
+#|      Resources                                                              |
+#+-----------------------------------------------------------------------------+
+Resources:
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC                                                                  |
+  #+---------------------------------------------------------------------------+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Sub ${CidrVpc}
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-vpc
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - InternetGateway                                                |
+  #+---------------------------------------------------------------------------+
+  VpcInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-igw
+  VpcInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref VpcInternetGateway
+      VpcId: !Ref Vpc
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Public Subnet                                                  |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPublicA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneA
+      CidrBlock: !Sub ${CidrSubnetPublicA}
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-public-a
+  VpcSubnetPublicB:
+    Type: AWS::EC2::Subnet
+    # Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneB
+      CidrBlock: !Sub ${CidrSubnetPublicB}
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-public-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - RouteTable - Public                                            |
+  #+---------------------------------------------------------------------------+
+  VpcRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-public
+  VpcRouteInternetGateway:
+    Type: AWS::EC2::Route
+    DependsOn: VpcInternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref VpcRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VpcInternetGateway
+
+  VpcSubnetRouteTableAssociationPublicA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VpcRouteTable
+      SubnetId: !Ref VpcSubnetPublicA
+  VpcSubnetRouteTableAssociationPublicB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    # Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref VpcRouteTable
+      SubnetId: !Ref VpcSubnetPublicB
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Private Subnet - Varnish                                       |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPrivateVarnishA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneA
+      CidrBlock: !Sub ${CidrSubnetPrivateVarnishA}
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-private-varnish-a
+  VpcSubnetPrivateVarnishB:
+    Type: AWS::EC2::Subnet
+    Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneB
+      CidrBlock: !Sub ${CidrSubnetPrivateVarnishB}
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-private-varnish-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Private Subnet - Laravel                                       |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPrivateLaravelA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneA
+      CidrBlock: !Sub ${CidrSubnetPrivateLaravelA}
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-private-laravel-a
+  VpcSubnetPrivateLaravelB:
+    Type: AWS::EC2::Subnet
+    Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneB
+      CidrBlock: !Sub ${CidrSubnetPrivateLaravelB}
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-private-laravel-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Private Subnet - MySQL                                         |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPrivateMySqlA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneA
+      CidrBlock: !Sub ${CidrSubnetPrivateMySqlA}
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-private-mysql-a
+  VpcSubnetPrivateMySqlB:
+    Type: AWS::EC2::Subnet
+    # Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneB
+      CidrBlock: !Sub ${CidrSubnetPrivateMySqlB}
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-private-mysql-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Private Subnet - Redis                                         |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPrivateRedisA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneA
+      CidrBlock: !Sub ${CidrSubnetPrivateRedisA}
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-private-redis-a
+  VpcSubnetPrivateRedisB:
+    Type: AWS::EC2::Subnet
+    Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Ref AvailabilityZoneB
+      CidrBlock: !Sub ${CidrSubnetPrivateRedisB}
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-subnet-private-redis-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - NAT Gateway                                                    |
+  #+---------------------------------------------------------------------------+
+  EipNatA:
+    Type: AWS::EC2::EIP
+    DependsOn: VpcInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      # Tags:
+      #   - Key: Name
+      #     Value: !Sub ${Prefix}-eip-nat-a
+  EipNatB:
+    Type: AWS::EC2::EIP
+    DependsOn: VpcInternetGatewayAttachment
+    Condition: ResourcesForStaging
+    Properties:
+      Domain: vpc
+      # Tags:
+      #   - Key: Name
+      #     Value: !Sub ${Prefix}-eip-nat-b
+
+  NatGatewayA:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt EipNatA.AllocationId
+      SubnetId: !Ref VpcSubnetPublicA
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-nat-a
+  NatGatewayB:
+    Type: AWS::EC2::NatGateway
+    Condition: ResourcesForStaging
+    Properties:
+      AllocationId: !GetAtt EipNatB.AllocationId
+      SubnetId: !Ref VpcSubnetPublicB
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-nat-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - RouteTable - Varnish                                           |
+  #+---------------------------------------------------------------------------+
+  RouteTableVarnishA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-varnish-a
+  RouteTableVarnishB:
+    Type: AWS::EC2::RouteTable
+    Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-varnish-b
+
+  RouteNatVarnishA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableVarnishA
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  RouteNatVarnishB:
+    Type: AWS::EC2::Route
+    Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref RouteTableVarnishB
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayB
+
+  SubnetRouteTableAssociationVarnishA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableVarnishA
+      SubnetId: !Ref VpcSubnetPrivateVarnishA
+  SubnetRouteTableAssociationVarnishB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref RouteTableVarnishB
+      SubnetId: !Ref VpcSubnetPrivateVarnishB
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - RouteTable - Laravel                                           |
+  #+---------------------------------------------------------------------------+
+  RouteTableLaravelA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-laravel-a
+  RouteTableLaravelB:
+    Type: AWS::EC2::RouteTable
+    Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-laravel-b
+
+  RouteNatLaravelA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableLaravelA
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  RouteNatLaravelB:
+    Type: AWS::EC2::Route
+    Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref RouteTableLaravelB
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayB
+
+  SubnetRouteTableAssociationLaravelA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableLaravelA
+      SubnetId: !Ref VpcSubnetPrivateLaravelA
+  SubnetRouteTableAssociationLaravelB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref RouteTableLaravelB
+      SubnetId: !Ref VpcSubnetPrivateLaravelB
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - RouteTable - MySQL                                             |
+  #+---------------------------------------------------------------------------+
+  RouteTableMySqlA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-mysql-a
+  RouteTableMySqlB:
+    Type: AWS::EC2::RouteTable
+    Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-mysql-b
+
+  RouteNatMySqlA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableMySqlA
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  RouteNatMySqlB:
+    Type: AWS::EC2::Route
+    Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref RouteTableMySqlB
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayB
+
+  SubnetRouteTableAssociationMySqlA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableMySqlA
+      SubnetId: !Ref VpcSubnetPrivateMySqlA
+  SubnetRouteTableAssociationMySqlB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref RouteTableMySqlB
+      SubnetId: !Ref VpcSubnetPrivateMySqlB
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - RouteTable - Redis                                             |
+  #+---------------------------------------------------------------------------+
+  RouteTableRedisA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-redis-a
+  RouteTableRedisB:
+    Type: AWS::EC2::RouteTable
+    Condition: ResourcesForStaging
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-rtb-redis-b
+
+  RouteNatRedisA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableRedisA
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  RouteNatRedisB:
+    Type: AWS::EC2::Route
+    Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref RouteTableRedisB
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayB
+
+  SubnetRouteTableAssociationRedisA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableRedisA
+      SubnetId: !Ref VpcSubnetPrivateRedisA
+  SubnetRouteTableAssociationRedisB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ResourcesForStaging
+    Properties:
+      RouteTableId: !Ref RouteTableRedisB
+      SubnetId: !Ref VpcSubnetPrivateRedisB
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - Bastion                                        |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupBastion:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-bastion
+      GroupDescription: Security Group for Bastion
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-bastion
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - SSH from VTI                                   |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupSshFromVti:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-ssh-from-vti
+      GroupDescription: Security Group for VPC - SSH from VTI office
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 118.70.81.192/32
+          Description: SSH from VTI office
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 113.164.234.70/32
+          Description: SSH from VTI office
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 222.252.30.111/32
+          Description: SSH from VTI office
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 219.121.2.22/32
+          Description: SSH from VTI office
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-ssh-from-vti
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - SSH from hyoban                                |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupSshFromHyoban:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-ssh-from-hyoban
+      GroupDescription: Security Group for VPC - SSH from Hyoban office
+      VpcId: !Ref Vpc
+      # TODO fill IP of Hyoban
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 119.73.181.98/32
+          Description: SSH from Hyoban office
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 118.189.23.235/32
+          Description: SSH from Hyoban office
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-ssh-from-hyoban
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - SSH from Bastion                               |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupSshFromBastion:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-ssh-from-bastion
+      GroupDescription: Security Group for VPC - SSH from Bastion
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-ssh-from-bastion
+  SecurityGroupIngressSshFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupSshFromBastion
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref SecurityGroupBastion
+      Description: SSH from Bastion
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - LoadBalancer                                   |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupLoadBalancer:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-alb
+      GroupDescription: Security Group for ALB
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-alb
+
+  # HTTPS from everywhere
+  SecurityGroupIngressLoadBalancerHttpsFromEverywhere:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttps
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+      Description: HTTPS from everywhere
+  # HTTP from everywhere
+  SecurityGroupIngressLoadBalancerHttpFromEverywhere:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttp
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+      Description: HTTP from everywhere
+
+  # HTTPS from bastion
+  SecurityGroupIngressLoadBalancerHttpsFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttps
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref SecurityGroupBastion
+      Description: HTTPS from Bastion
+  # HTTP from bastion
+  SecurityGroupIngressLoadBalancerHttpFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttp
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SecurityGroupBastion
+      Description: HTTP from Bastion
+
+  # HTTPS from VTI office
+  SecurityGroupIngressLoadBalancerHttpsFromVti1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttps
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 118.70.81.192/32
+      Description: HTTPS from VTI office
+  SecurityGroupIngressLoadBalancerHttpsFromVti2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttps
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 113.164.234.70/32
+      Description: HTTPS from VTI office
+  SecurityGroupIngressLoadBalancerHttpsFromVti3:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttps
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 222.252.30.111/32
+      Description: HTTPS from VTI office
+  SecurityGroupIngressLoadBalancerHttpsFromVti4:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttps
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 219.121.2.22/32
+      Description: HTTPS from VTI office
+  # HTTP from VTI office
+  SecurityGroupIngressLoadBalancerHttpFromVti1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttp
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 118.70.81.192/32
+      Description: HTTP from VTI office
+  SecurityGroupIngressLoadBalancerHttpFromVti2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttp
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 113.164.234.70/32
+      Description: HTTP from VTI office
+  SecurityGroupIngressLoadBalancerHttpFromVti3:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttp
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 222.252.30.111/32
+      Description: HTTP from VTI office
+  SecurityGroupIngressLoadBalancerHttpFromVti4:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttp
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 219.121.2.22/32
+      Description: HTTP from VTI office
+
+  # HTTPS from Hyoban office
+  SecurityGroupIngressLoadBalancerHttpsFromHyoban1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttps
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 119.73.181.98/32
+      Description: HTTPS from Hyoban office
+  SecurityGroupIngressLoadBalancerHttpsFromHyoban2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttps
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 118.189.23.235/32
+      Description: HTTPS from Hyoban office
+  # HTTP from Hyoban office
+  SecurityGroupIngressLoadBalancerHttpFromHyoban1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttp
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 119.73.181.98/32
+      Description: HTTP from Hyoban office
+  SecurityGroupIngressLoadBalancerHttpFromHyoban2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: ResourcesForHttp
+    Properties:
+      GroupId: !Ref SecurityGroupLoadBalancer
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 118.189.23.235/32
+      Description: HTTP from Hyoban office
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - Varnish                                        |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupVarnish:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-varnish
+      GroupDescription: Security Group for Varnish
+      VpcId: !Ref Vpc
+      # SecurityGroupIngress:
+      #   - IpProtocol: tcp
+      #     FromPort: 80
+      #     ToPort: 80
+      #     CidrIp: !Ref CidrVpc
+      #     Description: HTTP from VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-varnish
+  SecurityGroupIngressVarnishHttpFromLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupVarnish
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SecurityGroupLoadBalancer
+      Description: HTTP from ALB
+  SecurityGroupIngressVarnishHttpFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupVarnish
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SecurityGroupBastion
+      Description: HTTP from Bastion
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - Laravel                                        |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupLaravel:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-laravel
+      GroupDescription: Security Group for Laravel
+      VpcId: !Ref Vpc
+      # SecurityGroupIngress:
+      #   - IpProtocol: tcp
+      #     FromPort: 80
+      #     ToPort: 80
+      #     CidrIp: !Ref CidrVpc
+      #     Description: HTTP from VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-laravel
+  SecurityGroupIngressLaravelHttpFromLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupLaravel
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SecurityGroupLoadBalancer
+      Description: HTTP from ALB
+  SecurityGroupIngressLaravelHttpFromVarnish:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupLaravel
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SecurityGroupVarnish
+      Description: HTTP from Varnish
+  SecurityGroupIngressLaravelHttpFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupLaravel
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SecurityGroupBastion
+      Description: HTTP from Bastion
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - MySQL                                          |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupMySql:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-mysql
+      GroupDescription: Security Group for MySQL
+      VpcId: !Ref Vpc
+      # SecurityGroupIngress:
+      #   - IpProtocol: tcp
+      #     FromPort: 3306
+      #     ToPort: 3306
+      #     CidrIp: !Ref CidrVpc
+      #     Description: MySQL from VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-mysql
+  SecurityGroupIngressMySqlFromLaravel:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupMySql
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref SecurityGroupLaravel
+      Description: MySQL from Laravel
+  SecurityGroupIngressMySqlFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupMySql
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref SecurityGroupBastion
+      Description: MySQL from Bastion
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - Redis                                          |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupRedis:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-redis
+      GroupDescription: Security Group for Redis
+      VpcId: !Ref Vpc
+      # SecurityGroupIngress:
+      #   - IpProtocol: tcp
+      #     FromPort: 6379
+      #     ToPort: 6379
+      #     CidrIp: !Ref CidrVpc
+      #     Description: Redis from VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-redis
+  SecurityGroupIngressRedisFromLaravel:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupRedis
+      IpProtocol: tcp
+      FromPort: 6379
+      ToPort: 6379
+      SourceSecurityGroupId: !Ref SecurityGroupLaravel
+      Description: Redis from Laravel
+  SecurityGroupIngressRedisFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupRedis
+      IpProtocol: tcp
+      FromPort: 6379
+      ToPort: 6379
+      SourceSecurityGroupId: !Ref SecurityGroupBastion
+      Description: Redis from Bastion
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup - Endpoint                                       |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupEndpoint:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Prefix}-sg-endpoint
+      GroupDescription: Security Group for Endpoint
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-sg-endpoint
+  SecurityGroupIngressEndpointHttpsFromLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupEndpoint
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref SecurityGroupLoadBalancer
+      Description: HTTPS from ALB
+  SecurityGroupIngressEndpointHttpsFromVarnish:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupEndpoint
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref SecurityGroupVarnish
+      Description: HTTPS from Varnish
+  SecurityGroupIngressEndpointHttpsFromLaravel:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupEndpoint
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref SecurityGroupLaravel
+      Description: HTTPS from Laravel
+  SecurityGroupIngressEndpointHttpsFromMySql:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupEndpoint
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref SecurityGroupMySql
+      Description: HTTPS from MySql
+  SecurityGroupIngressEndpointHttpsFromRedis:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupEndpoint
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref SecurityGroupRedis
+      Description: HTTPS from Redis
+  SecurityGroupIngressEndpointHttpsFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupEndpoint
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref SecurityGroupBastion
+      Description: HTTPS from Bastion
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Endpoint - CloudWatch Logs                                     |
+  #+---------------------------------------------------------------------------+
+  VpcEndpointCloudWatchLogs:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Interface
+      ServiceName: !Join
+        - ''
+        - - com.amazonaws.
+          - !Ref AWS::Region
+          - .logs
+      VpcId: !Ref Vpc
+      SubnetIds:
+        Fn::If:
+          - ResourcesForProduction
+          - - !Ref VpcSubnetPrivateMySqlA
+            - !Ref VpcSubnetPrivateMySqlB
+          - Fn::If:
+              - ResourcesForStaging
+              - - !Ref VpcSubnetPrivateMySqlA
+                - !Ref VpcSubnetPrivateMySqlB
+              - - !Ref VpcSubnetPrivateMySqlA
+                - !Ref VpcSubnetPrivateMySqlB
+      SecurityGroupIds:
+        - !Ref SecurityGroupEndpoint
+      # Tags:
+      #   - Key: Name
+      #     Value: !Sub ${Prefix}-vpce-cloud-watch-logs
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - ApplicationLoadBalancer - TargetGroup - Varnish                |
+  #+---------------------------------------------------------------------------+
+  AlbTargetGroupVarnish:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /ping
+      # HealthCheckPort: traffic-port
+      # HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 3
+      # Matcher:
+      #     HttpCode: 200
+      Name: !Sub ${Prefix}-alb-tg-varnish
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60
+        - Key: slow_start.duration_seconds
+          Value: 30
+        - Key: stickiness.enabled
+          Value: true
+        - Key: stickiness.type
+          Value:  lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: 86400
+      # Targets:
+      #   - AvailabilityZone: all
+      #     Id: String
+      #     Port: 80
+      TargetType: ip
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-alb-tg-varnish
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - ApplicationLoadBalancer - TargetGroup - Laravel                |
+  #+---------------------------------------------------------------------------+
+  AlbTargetGroupLaravel:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /api/actuator/health
+      # HealthCheckPort: traffic-port
+      # HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 3
+      # Matcher:
+      #     HttpCode: 200
+      Name: !Sub ${Prefix}-alb-tg-laravel
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 120
+        - Key: slow_start.duration_seconds
+          Value: 60
+        - Key: stickiness.enabled
+          Value: true
+        - Key: stickiness.type
+          Value:  lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: 86400
+      # Targets:
+      #   - AvailabilityZone: all
+      #     Id: String
+      #     Port: 80
+      TargetType: ip
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-alb-tg-laravel
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - ApplicationLoadBalancer                                        |
+  #+---------------------------------------------------------------------------+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      LoadBalancerAttributes:
+        - Key: deletion_protection.enabled
+          Value: !Ref LoadBalancerDeletionProtection
+        # - Key: idle_timeout.timeout_seconds
+        #   Value: 60
+        # - Key: routing.http2.enabled
+        #   Value: true
+      Name: !Sub ${Prefix}-load-balancer
+      # Scheme: internal
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref SecurityGroupLoadBalancer
+      Subnets:
+        Fn::If:
+          - ResourcesForProduction
+          - - !Ref VpcSubnetPublicA
+            - !Ref VpcSubnetPublicB
+          - Fn::If:
+              - ResourcesForStaging
+              - - !Ref VpcSubnetPublicA
+                - !Ref VpcSubnetPublicB
+              - - !Ref VpcSubnetPublicA
+                - !Ref VpcSubnetPublicB
+      Type: application
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-load-balancer
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - ApplicationLoadBalancer - Listener - HTTPS                     |
+  #+---------------------------------------------------------------------------+
+  ApplicationLoadBalancerListenerHttps:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: ResourcesForHttps
+    Properties:
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        - Order: 999
+          TargetGroupArn: !Ref AlbTargetGroupVarnish
+          Type: forward
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+  ApplicationLoadBalancerListenerHttpsLaravel:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: ResourcesForHttps
+    Properties:
+      Actions:
+        - Order: 1
+          TargetGroupArn: !Ref AlbTargetGroupLaravel
+          Type: forward
+      Conditions:
+        # TODO update conditions
+        - Field: path-pattern
+          Values:
+            - /api/*
+      ListenerArn: !Ref ApplicationLoadBalancerListenerHttps
+      Priority: 1
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - ApplicationLoadBalancer - Listener - HTTP                      |
+  #+---------------------------------------------------------------------------+
+  ApplicationLoadBalancerListenerHttp:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: ResourcesForHttp
+    Properties:
+      DefaultActions:
+        - Order: 999
+          TargetGroupArn: !Ref AlbTargetGroupVarnish
+          Type: forward
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+  ApplicationLoadBalancerListenerHttpLaravel:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: ResourcesForHttp
+    Properties:
+      Actions:
+        - Order: 1
+          TargetGroupArn: !Ref AlbTargetGroupLaravel
+          Type: forward
+      Conditions:
+        # TODO update conditions
+        - Field: path-pattern
+          Values:
+            - /api/*
+      ListenerArn: !Ref ApplicationLoadBalancerListenerHttp
+      Priority: 1
+
+  #+---------------------------------------------------------------------------+
+  #|      Bastion EC2                                                          |
+  #+---------------------------------------------------------------------------+
+  Ec2Bastion01:
+    Type: AWS::EC2::Instance
+    Condition: BastionEc2AmiIdNotEmpty
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZoneA
+      ImageId:
+        Fn::If:
+          - BastionEc2AmiIdNotEmpty
+          - !Ref BastionEc2AmiId
+          - !FindInMap
+              - RegionMap
+              - !Ref "AWS::Region"
+              - AMI
+      InstanceType: !Ref BastionEc2InstanceType
+      KeyName: !Ref BastionEc2KeyPairName
+      SecurityGroupIds:
+        - !Ref SecurityGroupBastion
+        - !Ref SecurityGroupSshFromVti
+        - !Ref SecurityGroupSshFromHyoban
+      SubnetId: !Ref VpcSubnetPublicA
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            yum update -y
+      Tags:
+        - Key: Name
+          Value: !Sub ${Prefix}-bastion-ec2-01
+
+#+-----------------------------------------------------------------------------+
+#|         Outputs                                                             |
+#+-----------------------------------------------------------------------------+
+Outputs:
+
+  #+---------------------------------------------------------------------------+
+  #|      Environment Type                                                     |
+  #+---------------------------------------------------------------------------+
+  EnvironmentType:
+    Description: Environment type
+    Value: !Ref EnvironmentType
+    Export:
+      Name: !Sub ${Prefix}-environment-type
+
+  #+---------------------------------------------------------------------------+
+  #|      LoadBalancer                                                         |
+  #+---------------------------------------------------------------------------+
+  ApplicationLoadBalancerDnsName:
+    Description: The DNS Name of the ApplicationLoadBalancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub ${Prefix}-alb-dns-name
+  AlbTargetGroupVarnishArn:
+    Description: The ARN of the AlbTargetGroupVarnish
+    Value: !Ref AlbTargetGroupVarnish
+    Export:
+      Name: !Sub ${Prefix}-alb-tg-varnish
+  AlbTargetGroupLaravelArn:
+    Description: The ARN of the AlbTargetGroupLaravel
+    Value: !Ref AlbTargetGroupLaravel
+    Export:
+      Name: !Sub ${Prefix}-alb-tg-laravel
+
+  #+---------------------------------------------------------------------------+
+  #|      AvailabilityZones                                                    |
+  #+---------------------------------------------------------------------------+
+  AvailabilityZoneA:
+    Description: The ID of the AvailabilityZoneA
+    Value: !Ref AvailabilityZoneA
+    Export:
+      Name: !Sub ${Prefix}-availability-zone-a
+  AvailabilityZoneB:
+    Description: The ID of the AvailabilityZoneB
+    # Condition: ResourcesForStaging
+    Value: !Ref AvailabilityZoneB
+    Export:
+      Name: !Sub ${Prefix}-availability-zone-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC                                                                  |
+  #+---------------------------------------------------------------------------+
+  VPC:
+    Description: The ID of the VPC
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub ${Prefix}-vpc
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Public Subnet                                                  |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPublicA:
+    Description: The ID of the VpcSubnetPublicA
+    Value: !Ref VpcSubnetPublicA
+    Export:
+      Name: !Sub ${Prefix}-subnet-public-a
+  VpcSubnetPublicB:
+    Description: The ID of the VpcSubnetPublicB
+    # Condition: ResourcesForStaging
+    Value: !Ref VpcSubnetPublicB
+    Export:
+      Name: !Sub ${Prefix}-subnet-public-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Private Subnet - Varnish                                       |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPrivateVarnishA:
+    Description: The ID of the VpcSubnetPrivateVarnishA
+    Value: !Ref VpcSubnetPrivateVarnishA
+    Export:
+      Name: !Sub ${Prefix}-subnet-private-varnish-a
+  VpcSubnetPrivateVarnishB:
+    Description: The ID of the VpcSubnetPrivateVarnishB
+    Condition: ResourcesForStaging
+    Value: !Ref VpcSubnetPrivateVarnishB
+    Export:
+      Name: !Sub ${Prefix}-subnet-private-varnish-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Private Subnet - Laravel                                       |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPrivateLaravelA:
+    Description: The ID of the VpcSubnetPrivateLaravelA
+    Value: !Ref VpcSubnetPrivateLaravelA
+    Export:
+      Name: !Sub ${Prefix}-subnet-private-laravel-a
+  VpcSubnetPrivateLaravelB:
+    Description: The ID of the VpcSubnetPrivateLaravelB
+    Condition: ResourcesForStaging
+    Value: !Ref VpcSubnetPrivateLaravelB
+    Export:
+      Name: !Sub ${Prefix}-subnet-private-laravel-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Private Subnet - MySql                                         |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPrivateMySqlA:
+    Description: The ID of the VpcSubnetPrivateMySqlA
+    Value: !Ref VpcSubnetPrivateMySqlA
+    Export:
+      Name: !Sub ${Prefix}-subnet-private-mysql-a
+  VpcSubnetPrivateMySqlB:
+    Description: The ID of the VpcSubnetPrivateMySqlB
+    # Condition: ResourcesForStaging
+    Value: !Ref VpcSubnetPrivateMySqlB
+    Export:
+      Name: !Sub ${Prefix}-subnet-private-mysql-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - Private Subnet - Redis                                         |
+  #+---------------------------------------------------------------------------+
+  VpcSubnetPrivateRedisA:
+    Description: The ID of the VpcSubnetPrivateRedisA
+    Value: !Ref VpcSubnetPrivateRedisA
+    Export:
+      Name: !Sub ${Prefix}-subnet-private-redis-a
+  VpcSubnetPrivateRedisB:
+    Description: The ID of the VpcSubnetPrivateRedisB
+    Condition: ResourcesForStaging
+    Value: !Ref VpcSubnetPrivateRedisB
+    Export:
+      Name: !Sub ${Prefix}-subnet-private-redis-b
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup                                                  |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupBastion:
+    Description: The ID of the SecurityGroupBastion
+    Value: !Ref SecurityGroupBastion
+    Export:
+      Name: !Sub ${Prefix}-sg-bastion
+  SecurityGroupSshFromVti:
+    Description: The ID of the SecurityGroupSshFromVti
+    Value: !Ref SecurityGroupSshFromVti
+    Export:
+      Name: !Sub ${Prefix}-sg-ssh-from-vti
+  SecurityGroupSshFromHyoban:
+    Description: The ID of the SecurityGroupSshFromHyoban
+    Value: !Ref SecurityGroupSshFromHyoban
+    Export:
+      Name: !Sub ${Prefix}-sg-ssh-from-hyoban
+
+  #+---------------------------------------------------------------------------+
+  #|      VPC - SecurityGroup                                                  |
+  #+---------------------------------------------------------------------------+
+  SecurityGroupSshFromBastion:
+    Description: The ID of the SecurityGroupSshFromBastion
+    Value: !Ref SecurityGroupSshFromBastion
+    Export:
+      Name: !Sub ${Prefix}-sg-ssh-from-bastion
+  SecurityGroupLoadBalancer:
+    Description: The ID of the SecurityGroupLoadBalancer
+    Value: !Ref SecurityGroupLoadBalancer
+    Export:
+      Name: !Sub ${Prefix}-sg-alb
+  SecurityGroupVarnish:
+    Description: The ID of the SecurityGroupVarnish
+    Value: !Ref SecurityGroupVarnish
+    Export:
+      Name: !Sub ${Prefix}-sg-varnish
+  SecurityGroupLaravel:
+    Description: The ID of the SecurityGroupLaravel
+    Value: !Ref SecurityGroupLaravel
+    Export:
+      Name: !Sub ${Prefix}-sg-laravel
+  SecurityGroupMySql:
+    Description: The ID of the SecurityGroupMySql
+    Value: !Ref SecurityGroupMySql
+    Export:
+      Name: !Sub ${Prefix}-sg-mysql
+  SecurityGroupRedis:
+    Description: The ID of the SecurityGroupRedis
+    Value: !Ref SecurityGroupRedis
+    Export:
+      Name: !Sub ${Prefix}-sg-redis
+  SecurityGroupEndpoint:
+    Description: The ID of the SecurityGroupEndpoint
+    Value: !Ref SecurityGroupEndpoint
+    Export:
+      Name: !Sub ${Prefix}-sg-endpoint
+
+  #+---------------------------------------------------------------------------+
+  #|      EIP - NAT                                                            |
+  #+---------------------------------------------------------------------------+
+  EipNatA:
+    Description: The IP of the EipNatA
+    Value: !Ref EipNatA
+    Export:
+      Name: !Sub ${Prefix}-eip-nat-a
+  EipNatB:
+    Description: The IP of the EipNatB
+    Condition: ResourcesForStaging
+    Value: !Ref EipNatB
+    Export:
+      Name: !Sub ${Prefix}-eip-nat-b
+
+  #+---------------------------------------------------------------------------+
+  #|      Bastion EC2                                                          |
+  #+---------------------------------------------------------------------------+
+  Ec2Bastion01PublicIp:
+    Description: The ID of the Ec2Bastion01
+    Condition: BastionEc2AmiIdNotEmpty
+    Value: !GetAtt Ec2Bastion01.PublicIp
+    Export:
+      Name: !Sub ${Prefix}-bastion-ec2-01-public-ip

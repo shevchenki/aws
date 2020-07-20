@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: User CloudFormation Template
+
+#+-----------------------------------------------------------------------------+
+#|      Metadata                                                               |
+#+-----------------------------------------------------------------------------+
+Metadata:
+
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: General Parameters
+        Parameters:
+          - Prefix
+      - Label:
+          default: User Parameters
+        Parameters:
+          - CiCdUserName
+          - CiCdPassword
+
+#+-----------------------------------------------------------------------------+
+#|      Parameters                                                             |
+#+-----------------------------------------------------------------------------+
+Parameters:
+
+  Prefix:
+    Description: Prefix for all resources
+    Type: String
+    MaxLength: 13
+    Default: hyoban-prod
+
+  CiCdUserName:
+    Description: 'Username of CI/CD User'
+    Type: String
+    Default: hyoban-prod-iam-user-jenkins
+
+  CiCdPassword:
+    Description: 'Password of CI/CD User'
+    Type: String
+    NoEcho: true
+    MinLength: 8
+
+#+-----------------------------------------------------------------------------+
+#|      Resources                                                              |
+#+-----------------------------------------------------------------------------+
+Resources:
+
+  #+---------------------------------------------------------------------------+
+  #|      IAM - User - CI/CD                                                   |
+  #+---------------------------------------------------------------------------+
+  IamUserCiCd:
+    Type: AWS::IAM::User
+    Properties:
+      Groups:
+        - !Sub ${Prefix}-iam-group-s3-bucket-private-update
+        - !Sub ${Prefix}-iam-group-s3-bucket-log-update
+        - !Sub ${Prefix}-iam-group-s3-bucket-public-full
+        - !Sub ${Prefix}-iam-group-ecr-push
+        - !Sub ${Prefix}-iam-group-ecs-service-update
+        - !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-view
+        - !Sub ${Prefix}-iam-group-ecs-cloudwatch-logs-export
+      LoginProfile:
+        Password: !Ref CiCdPassword
+        PasswordResetRequired: true
+      # ManagedPolicyArns:
+      #   - arn:aws:iam::aws:policy/IAMUserChangePassword
+      # Path: String
+      # PermissionsBoundary: String
+      Policies:
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:GetAccountPasswordPolicy"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:ChangePassword"
+                  ],
+                  "Resource": [
+                    "arn:aws:iam::${AWS::AccountId}:user/${CiCdUserName}"
+                  ]
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-user-change-self-password
+        - PolicyDocument: !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:CreateAccessKey",
+                    "iam:DeleteAccessKey",
+                    "iam:UpdateAccessKey",
+                    "iam:GetAccessKeyLastUsed",
+                    "iam:GetUser",
+                    "iam:ListAccessKeys"
+                  ],
+                  "Resource": [
+                    "arn:aws:iam::${AWS::AccountId}:user/${CiCdUserName}"
+                  ]
+                }
+              ]
+            }
+          PolicyName: !Sub ${Prefix}-iam-policy-user-manage-self-access-key
+      Tags:
+        - Key: Name
+          Value: !Ref CiCdUserName
+      UserName: !Ref CiCdUserName
+
+#+-----------------------------------------------------------------------------+
+#|         Outputs                                                             |
+#+-----------------------------------------------------------------------------+
+Outputs:
+
+  IamUserCiCdArn:
+    Description: The ARN of the IamUserCiCd
+    Value: !GetAtt IamUserCiCd.Arn
+    Export:
+      Name: !Sub ${Prefix}-iam-user-cicd-arn
+  IamUserCiCd:
+    Description: The Name of the IamUserCiCd
+    Value: !Ref IamUserCiCd
+    Export:
+      Name: !Sub ${Prefix}-iam-user-cicd

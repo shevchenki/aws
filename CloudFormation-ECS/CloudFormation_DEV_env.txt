@@ -1,0 +1,185 @@
+# Prefix
+hyoban-dev
+
+# TAGs
+Project
+Hyoban
+
+Environment
+Development
+
+# Key Pair
+hyoban-dev-bastion
+
+# +----------------------------------------------------------------------------+
+# | CloudFormation - VPC                                                       |
+# +----------------------------------------------------------------------------+
+Prepare template: Template is ready
+Template source: Upload a template file
+Upload a template file: 001_VPC.yaml
+
+Stack name: hyoban-dev-vpc
+Prefix: hyoban-dev
+EnvironmentType: Development
+UseHttp: true
+UseHttps: false
+CertificateArn: 
+LoadBalancerDeletionProtection: false
+BastionEc2InstanceType: t3a.micro
+BastionEc2KeyPairName: hyoban-dev-bastion
+BastionEc2AmiId: ami-0c3fd0f5d33134a76
+AvailabilityZoneA: ap-northeast-1a
+AvailabilityZoneB: ap-northeast-1c
+CidrVpc: 10.2.0.0/16
+CidrSubnetPublicA: 10.2.1.0/26
+CidrSubnetPublicB: 10.2.1.64/26
+CidrSubnetPrivateVarnishA: 10.2.2.0/26
+CidrSubnetPrivateVarnishB: 10.2.2.64/26
+CidrSubnetPrivateLaravelA: 10.2.3.0/26
+CidrSubnetPrivateLaravelB: 10.2.3.64/26
+CidrSubnetPrivateMySqlA: 10.2.4.0/26
+CidrSubnetPrivateMySqlB: 10.2.4.64/26
+CidrSubnetPrivateRedisA: 10.2.5.0/26
+CidrSubnetPrivateRedisB: 10.2.5.64/26
+
+Tags
+Project: Hyoban
+Environment: Development
+
+Stack creation options
+Termination protection: Enabled
+
+# +----------------------------------------------------------------------------+
+# | CloudFormation - MySQL                                                     |
+# +----------------------------------------------------------------------------+
+Prepare template: Template is ready
+Template source: Upload a template file
+Upload a template file: 002_MySQL.yaml
+
+Stack name: hyoban-dev-mysql
+Prefix: hyoban-dev
+EnvironmentType: Development
+MySqlDeletionProtection: false
+MySqlMaxCapacity: 4
+MySqlMinCapacity: 1
+MySqlName: hyoban
+MySqlUsername: hyoban_master
+MySqlPassword: 
+
+Tags
+Project: Hyoban
+Environment: Development
+
+Stack creation options
+Termination protection: Enabled
+
+# +----------------------------------------------------------------------------+
+# | CloudFormation - Redis                                                     |
+# +----------------------------------------------------------------------------+
+Prepare template: Template is ready
+Template source: Upload a template file
+Upload a template file: 003_Redis.yaml
+
+Stack name: hyoban-dev-redis
+Prefix: hyoban-dev
+EnvironmentType: Development
+RedisCacheNodeType: cache.t3.micro
+
+Tags
+Project: Hyoban
+Environment: Development
+
+Stack creation options
+Termination protection: Enabled
+
+# +----------------------------------------------------------------------------+
+# | CloudFormation - S3                                                        |
+# +----------------------------------------------------------------------------+
+Prepare template: Template is ready
+Template source: Upload a template file
+Upload a template file: 004_S3.yaml
+
+Stack name: hyoban-dev-s3
+Prefix: hyoban-dev
+EnvironmentType: Development
+
+Tags
+Project: Hyoban
+Environment: Development
+
+Stack creation options
+Termination protection: Enabled
+
+# +----------------------------------------------------------------------------+
+# | CloudFormation - IAM                                                       |
+# +----------------------------------------------------------------------------+
+Prepare template: Template is ready
+Template source: Upload a template file
+Upload a template file: 005_IAM.yaml
+
+Stack name: hyoban-dev-iam
+Prefix: hyoban-dev
+EnvironmentType: Development
+AllowedCidrList: "118.70.81.192/32", "113.164.234.70/32", "222.252.30.111/32", "219.121.2.22/32"
+
+Tags
+Project: Hyoban
+Environment: Development
+
+Stack creation options
+Termination protection: Enabled
+
+☑ I acknowledge that AWS CloudFormation might create IAM resources with custom names.
+
+# +----------------------------------------------------------------------------+
+# | CloudFormation - User                                                      |
+# +----------------------------------------------------------------------------+
+Prepare template: Template is ready
+Template source: Upload a template file
+Upload a template file: 006_User.yaml
+
+Stack name: hyoban-dev-user
+Prefix: hyoban-dev
+CiCdUserName: hyoban-dev-iam-user-jenkins
+CiCdPassword: yTUFcu~Q{Y\y!&p4
+
+Tags
+Project: Hyoban
+Environment: Development
+
+Stack creation options
+Termination protection: Enabled
+
+☑ I acknowledge that AWS CloudFormation might create IAM resources with custom names.
+
+# +----------------------------------------------------------------------------+
+# | CloudFormation - ECS                                                       |
+# +----------------------------------------------------------------------------+
+Prepare template: Template is ready
+Template source: Upload a template file
+Upload a template file: 007_ECS.yaml
+
+Stack name: hyoban-dev-ecs
+Prefix: hyoban-dev
+EnvironmentType: Development
+TaskCpuVarnish: 256
+TaskMemoryVarnish: 2048
+AutoScalingMaxCapacityVarnish: 2
+AutoScalingDesiredCountVarnish: 0
+AutoScalingMinCapacityVarnish: 2
+CloudWatchAlarmCpuUtilizationThresholdVarnishScaleUp: 80
+CloudWatchAlarmCpuUtilizationThresholdVarnishScaleDown: 30
+TaskCpuLaravel: 512
+TaskMemoryLaravel: 2048
+AutoScalingMaxCapacityLaravel: 2
+AutoScalingDesiredCountLaravel: 0
+AutoScalingMinCapacityLaravel: 2
+CloudWatchAlarmCpuUtilizationThresholdLaravelScaleUp: 80
+CloudWatchAlarmCpuUtilizationThresholdLaravelScaleDown: 30
+
+Tags
+Project: Hyoban
+Environment: Development
+
+Stack creation options
+Termination protection: Enabled
