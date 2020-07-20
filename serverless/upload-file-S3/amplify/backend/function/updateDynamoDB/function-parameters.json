@@ -1,0 +1,14 @@
+{
+    "permissions": {
+        "storage": {
+            "uploads3": [
+                "read"
+            ]
+        },
+        "api": {
+            "uploadfiles3": [
+                "delete"
+            ]
+        }
+    }
+}
