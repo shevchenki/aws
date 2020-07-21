@@ -1,6 +1,7 @@
 import React, { Fragment } from 'react';
 
 import MyAppBar from './components/appBar';
+import UploadFile from './components/uploadFile';
 
 // import { withAuthenticator } from '@aws-amplify/ui-react';
 import { I18n } from "aws-amplify";
@@ -13,6 +14,7 @@ function App() {
     return (
         <Fragment>
             <MyAppBar/>
+            <UploadFile />
         </Fragment>
     );
 }
