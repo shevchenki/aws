@@ -4,7 +4,7 @@ import Paper from '@material-ui/core/Paper';
 import AttachFile from '@material-ui/icons/AttachFile';
 import Button from '@material-ui/core/Button';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
-import LinearProgress from '@material-ui/core/LinearProgress';
+// import LinearProgress from '@material-ui/core/LinearProgress';
 import ListData from './listData';
 import ListIcon from '@material-ui/icons/List';
 
@@ -24,7 +24,8 @@ const useStyles = makeStyles((theme) => ({
         margin: theme.spacing(1),
     },
     listData: {
-        marginTop: 0
+        marginRight: 10,
+        marginLeft: 10
     }
 }));
 
@@ -38,12 +39,15 @@ export default function Variants() {
         Object.keys(listFile).forEach(function (k) {
             metaData.push({
                 index: k,
-                fileName: listFile[k].type + '/' + listFile[k].name,
+                fileName: listFile[k].name,
+                fileType: listFile[k].type,
                 fileSize: listFile[k].size
             })
         })
         setListData(metaData);
     }
+
+    console.log(listData)
 
     return (
         <div className={classes.root}>
@@ -86,7 +90,7 @@ export default function Variants() {
                     アップロード履歴
                 </Button>
                 <Paper className={classes.listData}>
-                    <LinearProgress variant="determinate" value={60} />
+                    {/* <LinearProgress variant="determinate" value={60} /> */}
                     <ListData
                         rows={listData}
                     />

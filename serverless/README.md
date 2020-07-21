@@ -55,7 +55,32 @@ import awsExports from "./aws-exports";
 Amplify.configure(awsExports);
 ```
 
-## IV. Add authentication
+## IV. Change frontend
+### 1. Add Material-UI
+- `npm i @material-ui/core`
+- `npm i @material-ui/icons`
+- `npm i axios`
+
+### 2. Add app Bar: 
+    - /components/appBar.js
+### 3. Add Upload Screen: 
+    - /components/uploadFile.js
+    - /components/listData.js
+
+### 4. Add Japanese
+- add folder: src/i18n
+- add src/i18n/vocabularies.js
+- Open src/App.js and add code below:
+
+```
+import { I18n } from "aws-amplify";
+import vocabularies from "./i18n/vocabularies";
+I18n.putVocabularies(vocabularies);
+I18n.setLanguage("ja");
+```
+![](./images/Add_jpn.png)
+
+## V. Add authentication
 - `amplify add auth`
 ```
 ? Do you want to use the default authentication and security configuration? Default configuration
@@ -73,15 +98,3 @@ Amplify.configure(awsExports);
 - `npm start`
 - Login Screen:
 ![](./images/Add_Authentication.png)
-
-### 2. Add Japanese
-- add folder: src/i18n
-- add src/i18n/vocabularies.js
-- Open src/App.js and add code below:
-```
-import { I18n } from "aws-amplify";
-import vocabularies from "./i18n/vocabularies";
-I18n.putVocabularies(vocabularies);
-I18n.setLanguage("ja");
-```
-![](./images/Add_jpn.png)
